@@ -1,0 +1,3 @@
+import Link from "next/link";
+type NotificationRow = { id: number; s: string; i: string | number; d: string; u: number };
+export function IndexRow({ item, selected, navigationIndex }: { item: NotificationRow; selected?: boolean; navigationIndex?: number }) { return <Link className={`row${selected ? " sel" : ""}`} href={`/notifications/${item.id}`} data-list-nav={navigationIndex} aria-current={selected ? "true" : undefined}><span className="num">{String(item.id).padStart(2, "0")}</span><span className="t">{item.s} #{item.i} <span className="muted">/ {item.d}</span></span><span className={`dot${item.u ? " on" : ""}`} role={item.u ? "img" : undefined} aria-label={item.u ? "Unread" : undefined} aria-hidden={item.u ? undefined : true} /></Link>; }

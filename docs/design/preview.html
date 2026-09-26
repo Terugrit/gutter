@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Comic tracker: design preview</title>
+<link rel="icon" type="image/png" href="icon-placeholder-512.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#ffffff; --text:#252422; --accent:#eb5e28;
+  --muted:rgba(37,36,34,.6); --rule:rgba(37,36,34,.18); --placeholder:#efeeec; --ink:#252422;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{
+  margin:0;height:100%;display:flex;flex-direction:column;
+  background:var(--bg);color:var(--text);
+  font-family:'Playfair Display','Iowan Old Style',Georgia,'Times New Roman',serif;
+  font-size:16px;line-height:1.5;font-variant-numeric:lining-nums tabular-nums;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+.muted{color:var(--muted)}
+
+/* top bar */
+.top{display:flex;justify-content:space-between;align-items:center;gap:16px;height:44px;padding:0 24px;font-size:13px;font-weight:500;flex:none}
+.top nav{display:flex;gap:20px;align-items:center}
+.top .brand{margin-right:12px;font-weight:600}
+.nav-entry{display:inline-flex;align-items:center;gap:5px}
+.attention-badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border:1px solid var(--text);border-radius:999px;font-size:12px;font-weight:500;line-height:1;color:var(--text)}
+.top nav a[aria-current="page"]{text-decoration:underline;text-decoration-color:var(--accent);text-decoration-thickness:2px;text-underline-offset:6px}
+.top .right{display:flex;gap:14px;align-items:center}
+.ud{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-left:6px;vertical-align:middle}
+
+main{flex:1;min-height:0;overflow:auto;position:relative}
+
+/* index list */
+.idx-head,.row{display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;column-gap:8px}
+.idx-head{font-size:12px;font-weight:500;color:var(--muted);padding:8px 0 6px;border-bottom:1px solid var(--rule)}
+.row{min-height:40px;font-size:15px;border-bottom:1px solid var(--rule);transition:border-color .15s}
+.row .num{color:var(--muted);font-size:13px;font-weight:500}
+.row .t{transition:transform .15s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row:hover{border-bottom-color:var(--text)}
+a.row:hover .t{transform:translateX(4px)}
+.row.sel{border-bottom:2px solid var(--accent);font-weight:500}
+.row.sel .num{color:var(--text);font-weight:600}
+.dot{width:8px;height:8px;border-radius:50%;background:transparent;margin-right:4px}
+.dot.on{background:var(--accent)}
+.row .lnk{font-size:13px;font-weight:500;text-decoration:underline;text-underline-offset:3px;background:none;border:0;padding:8px 0;cursor:pointer}
+
+/* split (notifications, series) */
+.split{height:100%;display:grid;grid-template-columns:340px minmax(0,1fr)}
+.index{overflow:auto;min-height:0;padding:0 16px 40px 24px}
+.filters{display:flex;gap:16px;align-items:center;padding:8px 0 14px;font-size:13px;font-weight:500}
+.filters button{background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--rule)}
+.filters button[aria-pressed="true"]{text-decoration-color:var(--accent);text-decoration-thickness:2px}
+.stage{overflow:auto;min-height:0;container-type:inline-size;padding:0 24px 120px 8px}
+.mbar{display:none}
+
+/* stacked headline */
+.hl{margin:0;font-weight:500;text-transform:uppercase;letter-spacing:-.02em;line-height:.92;font-size:clamp(2.4rem,9cqw,6.5rem)}
+.hl .line{display:block;padding:.06em 0 .08em;border-bottom:1px solid var(--rule);text-align:left}
+.hl .line:first-child{border-top:1px solid var(--rule)}
+.hl .line:nth-child(1){text-align:right}
+.hl .line:nth-child(2){padding-left:20cqw}
+.hl .line:nth-child(3){text-align:right}
+.hl .line:nth-child(4){padding-left:8cqw}
+
+.detail{display:grid;grid-template-columns:220px minmax(0,1fr);gap:32px;margin-top:32px}
+.cv{aspect-ratio:2/3;background:var(--placeholder);overflow:hidden}
+.cv svg{display:block;width:100%;height:100%}
+dl.meta{margin:0;border-top:1px solid var(--rule)}
+dl.meta div{display:grid;grid-template-columns:130px 1fr;padding:9px 0;border-bottom:1px solid var(--rule);font-size:15px}
+dl.meta dt{color:var(--muted);font-size:13px;font-weight:500;padding-top:2px}
+dl.meta dd{margin:0}
+.desc{max-width:58ch;margin:20px 0 0;line-height:1.65}
+
+/* buttons + dock */
+.btn{font-size:14px;font-weight:500;padding:12px 20px;border:1px solid var(--text);background:transparent;border-radius:0;cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--ink)}
+.btn[disabled]{opacity:.6;cursor:default}
+.dock{position:fixed;left:calc(340px + (100vw - 340px) / 2);transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));margin:0;width:max-content;max-width:calc(100vw - 16px);display:flex;gap:4px;padding:5px;border-radius:999px;background:var(--text);color:#fff;z-index:5}
+.dock .btn{border:0;border-radius:999px;color:#fff;padding:11px 20px}
+.dock .btn.primary{background:var(--accent);color:var(--ink)}
+.dock :focus-visible{outline-color:#fff}
+.dock.fixed{left:50%}
+
+/* pages */
+.page{padding:8px 24px 120px;max-width:1240px}
+.page h1.title{font-size:clamp(2.4rem,6vw,3.5rem);font-weight:500;margin:16px 0 8px;letter-spacing:-.01em;line-height:1.05}
+.page .hl{font-size:clamp(2.4rem,8.5vw,7rem);container-type:normal}
+.page .hl .line:nth-child(2){padding-left:14vw}
+.page .hl .line:nth-child(4){padding-left:6vw}
+.sec{margin-top:56px}
+.sec header{display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid var(--text);padding-top:10px;margin-bottom:8px}
+.sec h2{margin:0;font-size:1.5rem;font-weight:500}
+.sec header a,.sec header button{font-size:13px;font-weight:500;text-decoration:underline;text-underline-offset:3px;background:none;border:0;cursor:pointer;padding:0}
+.strip{display:flex;gap:20px;overflow-x:auto;padding:12px 0 8px;scroll-snap-type:x proximity}
+.strip figure{margin:0;flex:none;width:150px;scroll-snap-align:start}
+.strip .cv{margin-bottom:8px}
+.strip figcaption{border-top:1px solid var(--rule);padding-top:8px;font-size:15px;line-height:1.3;font-weight:500}
+.strip figcaption span{display:block;font-size:13px;font-weight:400;color:var(--muted);margin-top:4px}
+.strip figcaption button{margin-top:6px;font-size:13px;font-weight:500;text-decoration:underline;text-underline-offset:3px;background:none;border:0;padding:0;cursor:pointer}
+.upcoming-week{margin-top:18px}
+.week-label{margin:0;color:var(--muted);font-size:13px;font-weight:500}
+.upcoming-week .strip{padding-top:8px}
+.upcoming-week .strip figure>a{display:block;margin-bottom:8px}
+.upcoming-week .strip .cv{margin-bottom:0}
+.moved-tag{display:inline-block;margin-left:8px;font-size:12px;font-weight:500;color:var(--muted);text-decoration:underline;text-decoration-color:var(--accent);text-underline-offset:3px}
+.moved-from{display:none}
+.row:hover .moved-from,.row:focus-visible .moved-from{display:inline}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:24px}
+.stat{border-top:1px solid var(--text);padding-top:8px}
+.stat b{display:block;font-size:clamp(2.6rem,5vw,4.5rem);font-weight:500;line-height:1;letter-spacing:-.02em}
+.stat span{font-size:13px;font-weight:500;color:var(--muted)}
+.foot{margin-top:56px;font-size:13px;color:var(--muted)}
+
+/* library */
+.tools{display:flex;gap:24px;align-items:end;margin:8px 0 28px;flex-wrap:wrap}
+.tools input{font:inherit;font-size:15px;border:0;border-bottom:1px solid var(--text);background:transparent;padding:8px 0;min-width:240px;border-radius:0;color:var(--text)}
+.tools input::placeholder{color:var(--muted)}
+.tools button{background:none;border:0;padding:8px 0;cursor:pointer;font-size:13px;font-weight:500;text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--rule)}
+.tools button[aria-pressed="true"]{text-decoration-color:var(--accent);text-decoration-thickness:2px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:36px 22px}
+.item{background:none;border:0;padding:0;text-align:left;cursor:pointer;display:block;width:100%}
+.item .cv{position:relative;border-bottom:3px solid transparent}
+.item.sel .cv{border-bottom-color:var(--accent)}
+.item .chk{position:absolute;top:8px;left:8px;width:22px;height:22px;background:var(--text);color:#fff;font-size:13px;display:none;align-items:center;justify-content:center}
+.item.sel .chk{display:flex}
+.item .cap{border-top:1px solid var(--rule);margin-top:8px;padding-top:8px;font-size:15px;font-weight:500;line-height:1.3}
+.item:hover .cap{border-top-color:var(--text)}
+.item .cap small{display:block;font-weight:400;font-size:13px;color:var(--muted);margin-top:3px}
+.grid .lnk{display:inline-block;margin-top:6px;padding:12px 0;font-size:13px;font-weight:500;text-decoration:underline;text-underline-offset:3px}
+
+/* discover */
+.disc{display:grid;grid-template-columns:minmax(0,1fr) 240px;gap:56px;align-items:start}
+.preview{position:sticky;top:24px}
+.preview .cv{width:100%}
+.preview p{font-size:13px;color:var(--muted);margin:10px 0 0}
+.drow{grid-template-columns:44px minmax(0,1fr) auto}
+.drow .t{white-space:normal;line-height:1.3;padding:8px 0}
+.drow .t small{display:block;color:var(--muted);font-size:13px}
+.thumb{display:none}
+
+/* settings */
+.srow{display:grid;grid-template-columns:140px minmax(0,1fr) 150px 60px;gap:12px;padding:14px 0;border-bottom:1px solid var(--rule);align-items:center;font-size:15px}
+.srow:hover{border-bottom-color:var(--text)}
+.srow .lnk{background:none;border:0;padding:0;font-size:13px;font-weight:500;text-decoration:underline;text-underline-offset:3px;cursor:pointer;justify-self:end}
+
+/* toast + tabbar */
+.toast{position:fixed;left:24px;bottom:calc(24px + env(safe-area-inset-bottom,0px));background:var(--bg);border:1px solid var(--text);padding:10px 16px;font-size:13px;font-weight:500;opacity:0;transform:translateY(8px);transition:opacity .2s,transform .2s;pointer-events:none;z-index:20}
+.toast.on{opacity:1;transform:none}
+.tabbar{display:none}
+
+@media (max-width:1023px){
+  .top nav{display:none}
+  .top{padding:0 16px}
+  main{padding-bottom:96px}
+  .split{display:block;height:auto}
+  .index{overflow:visible;padding:0 16px}
+  .stage{overflow:visible;padding:0 16px 140px}
+  .split.has-sel .index{display:none}
+  .split:not(.has-sel) .stage{display:none}
+  .row{min-height:56px;font-size:16px}
+  .mbar{display:flex;justify-content:space-between;align-items:center;padding:12px 0;font-size:14px;font-weight:500}
+  .mbar a{text-decoration:underline;text-underline-offset:4px}
+  .mbar .arrows{display:flex;gap:18px;font-size:18px}
+  .hl{font-size:clamp(2.4rem,12.5cqw,5rem)}
+  .hl .line:nth-child(n){padding-left:0}
+  .hl .line:nth-child(odd){text-align:right}
+  .hl .line:nth-child(even){text-align:left}
+  .detail{grid-template-columns:1fr;gap:20px}
+  .detail .cv{width:52%;max-width:240px}
+  .dock,.dock.fixed{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(80px + env(safe-area-inset-bottom,0px));margin:0}
+  .page{padding:8px 16px 140px}
+  .page .hl .line:nth-child(n){padding-left:0}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .disc{grid-template-columns:1fr}
+  .preview{display:none}
+  .drow{grid-template-columns:44px 44px minmax(0,1fr) auto}
+  .thumb{display:block;width:32px;aspect-ratio:2/3;background:var(--placeholder);overflow:hidden}
+  .thumb svg{display:block;width:100%;height:100%}
+  .srow{grid-template-columns:1fr auto;row-gap:4px}
+  .srow .u{grid-column:1/-1;order:3;color:var(--muted);font-size:13px}
+  .toast{bottom:calc(84px + env(safe-area-inset-bottom,0px));left:16px}
+  .tabbar{display:flex;position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom,0px));background:var(--text);border-radius:999px;padding:4px;gap:0;z-index:10;max-width:calc(100% - 16px)}
+  .tabbar a{color:#fff;font-size:12px;font-weight:500;padding:12px 8px;position:relative;white-space:nowrap}
+  .tabbar .attention-badge{border-color:var(--bg);color:var(--bg);margin-left:4px}
+  .tabbar a[aria-current="page"]::after{content:"";position:absolute;left:8px;right:8px;bottom:6px;height:2px;background:var(--accent)}
+  .tabbar :focus-visible{outline-color:#fff}
+}
+@media (max-width:420px){.detail .cv{width:64%}.stats b{font-size:2.6rem}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+
+/* M02: series collection progress */
+.series-progress{margin:24px 0}
+.series-progress-label{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:13px;margin-bottom:8px}
+.progress-track{height:2px;background:var(--rule)}
+.progress-track>span{display:block;height:100%;background:var(--accent)}
+
+.index button.row{width:100%;border-left:0;border-top:0;border-right:0;background:none;padding:0;text-align:left;cursor:pointer}
+</style>
+</head>
+<body>
+<header class="top">
+  <nav id="topnav" aria-label="Main">
+    <span class="brand">Comic tracker</span>
+    <a href="#/dashboard" data-v="dashboard">Dashboard</a>
+    <span class="nav-entry"><a href="#/library" data-v="library">Library</a><a class="attention-badge" href="#/library/attention" aria-label="1 series needs a match">1</a></span>
+    <a href="#/notifications" data-v="notifications">Notifications</a>
+    <a href="#/discover" data-v="discover">Discover</a>
+    <a href="#/settings" data-v="settings">Settings</a>
+  </nav>
+  <span class="brand mobile-brand" id="mbrand" style="display:none">Comic tracker</span>
+  <div class="right"><span id="clock" class="muted"></span></div>
+</header>
+<main id="main"></main>
+<nav class="tabbar" id="tabbar" aria-label="Main">
+  <a href="#/dashboard" data-v="dashboard">Dashboard</a>
+  <a href="#/library/attention" data-v="library">Library<span class="attention-badge" aria-label="1 series needs a match">1</span></a>
+  <a href="#/notifications" data-v="notifications">Notifications<i class="ud" id="tabdot" hidden></i></a>
+  <a href="#/discover" data-v="discover">Discover</a>
+  <a href="#/settings" data-v="settings">Settings</a>
+</nav>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ---------- helpers ---------- */
+const $=(s,r=document)=>r.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pad=n=>String(n).padStart(2,'0');
+const PAL=[['#243b53','#f0b429','#e4e7eb'],['#6b2d3c','#f2d7c9','#f7efe9'],['#2d5a4a','#e9dfb8','#f4a261'],['#3d348b','#f7b267','#f2f2f2'],['#1d3557','#e63946','#f1faee'],['#4a4e69','#c9ada7','#f2e9e4'],['#5f0f40','#fb8b24','#fff3e0'],['#264653','#e9c46a','#f4a261']];
+function cover(seed,title,num){
+  const p=PAL[seed%PAL.length],k=(seed*53)%97,lines=[];let cur='';
+  title.split(' ').forEach(w=>{if(cur&&(cur+' '+w).length>11){lines.push(cur);cur=w}else cur=(cur+' '+w).trim()});lines.push(cur);
+  const shapes=[
+    `<circle cx="${70+k%60}" cy="${100+k%40}" r="${52+k%20}" fill="${p[1]}"/><rect x="0" y="${140+k%30}" width="200" height="14" fill="${p[2]}" opacity=".9"/>`,
+    `<polygon points="0,${120+k%40} 200,${60+k%40} 200,${130+k%40} 0,${200+k%30}" fill="${p[1]}"/><circle cx="${150-k%40}" cy="70" r="26" fill="${p[2]}"/>`,
+    `<rect x="${20+k%50}" y="40" width="70" height="160" fill="${p[1]}"/><rect x="${100+k%40}" y="70" width="50" height="130" fill="${p[2]}" opacity=".85"/>`,
+    `<circle cx="100" cy="110" r="${58+k%15}" fill="none" stroke="${p[1]}" stroke-width="18"/><circle cx="100" cy="110" r="22" fill="${p[2]}"/>`];
+  const F='font-family="Playfair Display,Georgia,serif"';
+  const txt=lines.slice(0,3).map((t,i)=>`<text x="14" y="${236+i*21}" ${F} font-weight="600" font-size="19" fill="${p[2]}">${esc(t)}</text>`).join('');
+  return `<svg viewBox="0 0 200 300" role="img" aria-label="${esc(title)} cover" preserveAspectRatio="xMidYMid slice"><rect width="200" height="300" fill="${p[0]}"/>${shapes[seed%4]}${num?`<text x="186" y="26" text-anchor="end" ${F} font-weight="500" font-size="14" fill="${p[2]}">#${num}</text>`:''}${txt}</svg>`;
+}
+let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),2200)}
+
+/* ---------- sample data (invented) ---------- */
+const N=[
+{s:'Night Signal',i:14,d:'16 Sep 2026',pub:'Harbor Press',t:'The Quiet Hour',w:'Mara Okonkwo',a:'Jun Tanaka',u:1,own:1,desc:'The signal returns, and this time it is answering back. Ilse follows the broadcast to a flooded relay station.'},
+{s:'The Salt Line',i:6,d:'16 Sep 2026',pub:'Lamplight Comics',t:'Low Water',w:'Petra Voss',a:'Emil Haddad',u:1,own:0,desc:'A survey crew crosses the drained sea bed and finds the old shipping lanes still marked in buoys.'},
+{s:'Hollow Crown',i:22,d:'16 Sep 2026',pub:'Northfield',t:'Regent',w:'Dan Ferreira',a:'Sana Mirza',u:1,own:1,desc:'The council votes, the palace goes quiet, and one heir refuses to leave the throne room.'},
+{s:'Paper Tigers',i:9,d:'9 Sep 2026',pub:'Tin Roof',t:'Folded',w:'Lee Chao',a:'Lee Chao',u:0,own:1,desc:'Origami contests get dangerous when the prize is a printing press that never runs out of ink.'},
+{s:'Low Tide',i:31,d:'9 Sep 2026',pub:'Harbor Press',t:'Undertow',w:'Ada Brandt',a:'Rui Costa',u:0,own:0,desc:'A lighthouse keeper logs every wave for thirty years. This week the log stops matching the sea.'},
+{s:'Ash & Ember',i:3,d:'9 Sep 2026',pub:'Marrow & Co',t:'Kindling',w:'Noor Aziz',a:'Tomas Weiss',u:0,own:1,desc:'Two rival fire wardens share one watchtower and one radio. The forest picks a side.'},
+{s:'Copper Sky',i:18,d:'2 Sep 2026',pub:'Northfield',t:'Weather Eye',w:'Hugo Lindqvist',a:'Ines Duarte',u:0,own:0,desc:'The airship yards close for the season, but the last freight run cannot wait for spring.'},
+{s:'Velvet Static',i:7,d:'2 Sep 2026',pub:'Quiet Engine',t:'B-Side',w:'Kit Marlowe',a:'Yara Solis',u:0,own:1,desc:'A pirate radio DJ finds a tape labelled with tomorrow\u2019s date.'},
+{s:'The Long Orbit',i:12,d:'2 Sep 2026',pub:'Lamplight Comics',t:'Perigee',w:'Oren Blake',a:'Mei Lin',u:0,own:1,desc:'Forty years out, the ship finally hears home. Nobody agrees on what it is saying.'},
+{s:'Wren Street',i:5,d:'26 Aug 2026',pub:'Tin Roof',t:'Lodgers',w:'Fern Adeyemi',a:'Paolo Greco',u:0,own:0,desc:'Every flat on the street has a tenant nobody remembers moving in.'},
+{s:'Iron Lantern',i:40,d:'26 Aug 2026',pub:'Marrow & Co',t:'Hundredth Night',w:'Dan Ferreira',a:'Kaito Mori',u:0,own:1,desc:'Issue forty closes the long arc, with the lamplighters gathered at the harbour wall.'},
+{s:'Small Harbors',i:2,d:'26 Aug 2026',pub:'Quiet Engine',t:'Tender',w:'Wren Kessler',a:'Lotte Maas',u:0,own:0,desc:'A ferry line, three islands, and a timetable that changes with the tide.'}
+].map((n,k)=>({...n,id:k+1,seed:k+1,kap:'idle'}));
+
+const MISSING=[['Night Signal',12,'22 Jul 2026',1],['Night Signal',13,'19 Aug 2026',1],['Hollow Crown',20,'8 Jul 2026',3],['Hollow Crown',21,'12 Aug 2026',3],['Low Tide',29,'15 Jul 2026',5],['Copper Sky',16,'22 Jul 2026',7],['Copper Sky',17,'19 Aug 2026',7]].map((m,k)=>({s:m[0],i:m[1],d:m[2],seed:m[3],id:'m'+k,kap:'idle'}));
+const REC_LIB=[['Lantern Row','Lamplight Comics','Same writer as Night Signal'],['The Quiet Engine','Quiet Engine','Same publisher as Velvet Static'],['Ninth Bell','Northfield','Same artist as Hollow Crown'],['Salt & Iron','Harbor Press','Fans of The Salt Line read this'],['Kestrel Point','Harbor Press','Same publisher as Low Tide'],['Drift Season','Tin Roof','Similar genre to Paper Tigers'],['Ember Court','Marrow & Co','Same writer as Ash & Ember'],['Orbit Keepers','Lamplight Comics','Fans of The Long Orbit read this'],['Glass Harvest','Northfield','Same artist as Copper Sky'],['Back Lot Ghosts','Quiet Engine','Same writer as Velvet Static']];
+const REC_RND=[['Moss Kingdom','Tin Roof','Picked at random'],['The Clockwork Ferry','Harbor Press','Picked at random'],['Nightshift Saints','Marrow & Co','Picked at random'],['Sundial','Lamplight Comics','Picked at random'],['Hush Protocol','Quiet Engine','Picked at random'],['Paper Moon Motel','Tin Roof','Picked at random'],['The Fifth Season Club','Northfield','Picked at random'],['Tidewrack','Harbor Press','Picked at random'],['Copperhead Lane','Marrow & Co','Picked at random'],['Bright Machines','Lamplight Comics','Picked at random']];
+const LIB=['Night Signal','The Salt Line','Hollow Crown','Paper Tigers','Low Tide','Ash & Ember','Copper Sky','Velvet Static','The Long Orbit','Wren Street','Iron Lantern','Small Harbors','Glass Meridian','Tin Saints','Moth & Lantern','The Understudy','Field Notes from Nowhere','Salt Road'].map((t,k)=>({id:k,t,seed:k+1,pub:['Harbor Press','Lamplight Comics','Northfield','Tin Roof','Marrow & Co','Quiet Engine'][k%6],fol:k<7,attention:k===2,sel:false}));
+const SERVICES=[['Komga','http://komga:25600'],['Metron','metron.cloud'],['ComicVine','comicvine.gamespot.com'],['Kapowarr','http://kapowarr:5656'],['ntfy','http://ntfy:80/comics']];
+const ui={onlyUnread:false,q:'',onlyFollowed:false,follow:{},keyboardRow:-1};
+
+/* ---------- pieces ---------- */
+const kapLabel=s=>s==='idle'?'Send to Kapowarr':s==='busy'?'Sending\u2026':'Sent to Kapowarr';
+const unread=()=>N.filter(n=>n.u).length;
+const headline=lines=>`<h1 class="hl">${lines.map(l=>`<span class="line">${esc(l)}</span>`).join('')}</h1>`;
+function row(n,sel){
+  return `<a class="row ${sel?'sel':''}" href="#/notifications/${n.id}" ${sel?'aria-current="true"':''}>
+    <span class="num">${pad(n.id)}</span>
+    <span class="t">${esc(n.s)} #${n.i} <span class="muted">/ ${n.d}</span></span>
+    <span class="dot ${n.u?'on':''}" ${n.u?'role="img" aria-label="Unread"':'aria-hidden="true"'}></span></a>`;
+}
+function detail(n){
+  const prev=N.find(x=>x.id===n.id-1),next=N.find(x=>x.id===n.id+1);
+  return `<div class="mbar"><a href="#/notifications">\u2190 Notifications</a><span class="arrows">
+      ${prev?`<a href="#/notifications/${prev.id}" aria-label="Previous notification">\u2191</a>`:''}
+      ${next?`<a href="#/notifications/${next.id}" aria-label="Next notification">\u2193</a>`:''}</span></div>
+    ${headline([n.s,'Issue '+n.i,'Out '+n.d.replace(/ 2026$/,'')])}
+    <div class="detail">
+      <div class="cv">${cover(n.seed,n.s,n.i)}</div>
+      <div>
+        <dl class="meta">
+          <div><dt>Issue title</dt><dd>${esc(n.t)}</dd></div>
+          <div><dt>Writer</dt><dd>${esc(n.w)}</dd></div>
+          <div><dt>Artist</dt><dd>${esc(n.a)}</dd></div>
+          <div><dt>Publisher</dt><dd>${esc(n.pub)}</dd></div>
+          <div><dt>Release date</dt><dd>${n.d}</dd></div>
+          <div><dt>In your library</dt><dd>${n.own?'\u25CF Owned':'\u25CB Missing'}</dd></div>
+        </dl>
+        <p class="desc">${esc(n.desc)}</p>
+      </div>
+    </div>
+    <div class="dock" role="group" aria-label="Actions">
+      <button class="btn primary" data-kap="${n.id}" ${n.kap!=='idle'?'disabled':''}>${kapLabel(n.kap)}</button>
+      <button class="btn" data-unread="${n.id}">Mark unread</button>
+    </div>`;
+}
+function summary(){
+  const newest=N[0];
+  return `${headline([unread()+' unread',N.length+' notifications','Since 26 Aug'])}
+    <div class="detail"><div class="cv">${cover(newest.seed,newest.s,newest.i)}</div>
+    <div><p class="desc" style="margin-top:0">Select a notification on the left to see the issue, its creators and a shortcut to Kapowarr.</p></div></div>`;
+}
+
+/* ---------- views ---------- */
+const views={
+notifications(arg){
+  const id=+arg||0,sel=N.find(n=>n.id===id);
+  if(sel&&sel.u)sel.u=0;
+  const list=N.filter(n=>!ui.onlyUnread||n.u||n.id===id);
+  return `<div class="split ${sel?'has-sel':''}">
+    <aside class="index" aria-label="Notifications">
+      <div class="filters"><button aria-pressed="${ui.onlyUnread}" data-act="unread-only">Unread only</button></div>
+      <div class="idx-head"><span>No.</span><span>Notification</span><span></span></div>
+      ${list.map(n=>row(n,n.id===id)).join('')}
+    </aside>
+    <section class="stage" aria-label="Notification detail">${sel?detail(sel):summary()}</section></div>`;
+},
+dashboard(){
+  const miss=MISSING.map((m,k)=>`<div class="row ${ui.keyboardRow===k?'sel':''}" ${ui.keyboardRow===k?'aria-current="true"':''}><span class="num">${pad(k+1)}</span><span class="t">${esc(m.s)} #${m.i} <span class="muted">/ ${m.d}</span></span><button class="lnk" data-mkap="${m.id}" ${m.kap!=='idle'?'disabled':''}>${kapLabel(m.kap)}</button></div>`).join('');
+  const strip=(a,off)=>`<div class="strip">${a.slice(0,10).map((r,k)=>`<figure><div class="cv">${cover(k+off,r[0])}</div><figcaption>${esc(r[0])}<span>${esc(r[2])}</span><button data-follow="${esc(r[0])}">${ui.follow[r[0]]?'Following':'Follow'}</button></figcaption></figure>`).join('')}</div>`;
+  return `<div class="page">
+    ${headline([N.filter(n=>n.d==='16 Sep 2026').length+' new issues',MISSING.length+' missing','128 books read'])}
+    <section class="sec"><header><h2>Missing issues</h2><a href="#/library">Manage followed series</a></header>${miss}</section>
+    <section class="sec"><header><h2>Coming up</h2></header><div class="upcoming-week"><p class="week-label">Week of 5 Oct</p><div class="strip"><figure><a href="#/series/1"><div class="cv">${cover(1087,'Night Signal',15)}</div></a><figcaption>Night Signal #15<small class="moved-tag" title="Moved from 2026-09-23">moved</small><span>2026-10-07 / The new signal</span></figcaption></figure></div></div></section>
+    <section class="sec"><header><h2>Recommended for you</h2><a href="#/discover">See all</a></header>${strip(REC_LIB,2)}</section>
+    <section class="sec"><header><h2>Something different</h2><a href="#/discover">See all</a></header>${strip(REC_RND,5)}</section>
+    <section class="sec"><header><h2>Reading</h2></header>
+      <div class="stats"><div class="stat"><b>128</b><span>Books read</span></div><div class="stat"><b>6</b><span>In progress</span></div><div class="stat"><b>14</b><span>Series completed</span></div><div class="stat"><b>9</b><span>Read this month</span></div></div></section>
+    <p class="foot">Sample data for the design preview. Covers are generated placeholders.</p></div>`;
+},
+library(){
+  const q=ui.q.toLowerCase(),attention=location.hash.includes('/attention'),items=LIB.filter(x=>(!q||x.t.toLowerCase().includes(q))&&(!ui.onlyFollowed||x.fol)&&(!attention||x.attention));
+  const n=LIB.filter(x=>x.sel).length;
+  return `<div class="page"><h1 class="title">Library</h1>
+    <div class="tools"><input id="q" type="search" placeholder="Search your library" aria-label="Search your library" value="${esc(ui.q)}">
+      <button aria-pressed="${ui.onlyFollowed}" data-act="followed-only">Followed only</button>${attention?'<a class="lnk" href="#/library">Show all followed</a>':''}</div>
+    <div class="grid">${items.map(x=>`<div><button class="item ${x.sel?'sel':''}" data-lib="${x.id}" aria-pressed="${x.sel}">
+      <div class="cv">${cover(x.seed,x.t)}<span class="chk" aria-hidden="true">\u2713</span></div>
+      <div class="cap">${esc(x.t)}<small>${x.attention?'\u25CB Needs match':x.fol?'\u25CF Following':esc(x.pub)}</small></div></button>${x.fol?`<a class="lnk" href="#/series/${x.id}">Manage issues \u2192</a>`:''}</div>`).join('')||'<p class="muted">No series match that search.</p>'}</div>
+    ${n?`<div class="dock fixed" role="group" aria-label="Selection actions"><button class="btn primary" data-act="follow-sel">Follow ${n} series</button><button class="btn" data-act="clear-sel">Clear</button></div>`:''}
+    </div>`;
+},
+discover(){
+  const list=(a,off)=>a.map((r,k)=>`<div class="row drow" data-prev="${k+off}|${esc(r[0])}"><span class="num">${pad(k+1)}</span><span class="thumb">${cover(k+off,r[0])}</span>
+    <span class="t">${esc(r[0])} <span class="muted">/ ${esc(r[1])}</span><small>${esc(r[2])}</small></span>
+    <button class="lnk" data-follow="${esc(r[0])}">${ui.follow[r[0]]?'Following':'Follow'}</button></div>`).join('');
+  return `<div class="page"><h1 class="title">Discover</h1>
+    <div class="disc"><div>
+      <section class="sec" style="margin-top:24px"><header><h2>Recommended for you</h2><button data-act="refresh">Refresh</button></header>${list(REC_LIB,2)}</section>
+      <section class="sec"><header><h2>Something different</h2><button data-act="refresh">Refresh</button></header>${list(REC_RND,5)}</section></div>
+      <aside class="preview" aria-hidden="true"><div class="cv" id="pv"></div><p id="pvt">Hover a row to preview its cover.</p></aside></div></div>`;
+},
+series(){
+  const skipped=!!ui.issueSkipped, selected=ui.seriesIssue, owned=ui.progressState==='incomplete'?1:2, state=ui.progressState||'incomplete';
+  return `<div class="split${selected?' has-sel':''}"><aside class="index" aria-label="Series issues"><div class="mbar"><a href="#/library">← Library</a></div><div class="filters"><button aria-pressed="${!ui.skippedOnly}" data-act="issues-active">Issues</button><button aria-pressed="${!!ui.skippedOnly}" data-act="issues-skipped">Skipped (${skipped?1:0})</button></div><div class="idx-head"><span>No.</span><span>Issue</span><span>State</span></div><button class="row" data-act="series-manage"><span class="num">—</span><span class="t">Manage series</span><span>→</span></button>${!!ui.skippedOnly===skipped?`<button class="row${selected?' sel':''}" data-act="series-issue"><span class="num">01</span><span class="t">#2 Second light <small class="moved-tag" title="Moved from 2026-09-14">moved<span class="moved-from"> · from 2026-09-14</span></small></span><span>${skipped?'Skipped':owned===2?'● Owned':'○ Missing'}</span></button>`:'<p class="muted">No skipped issues.</p>'}</aside><section class="stage"><div class="mbar"><button class="lnk" data-act="series-manage">← Issues</button></div><h1 class="hl"><span class="line">Night Signal</span><span class="line">${selected?'Issue 2':'Issues'}</span><span class="line">${selected?'Out 2026-09-21':'From your library'}</span></h1><div class="series-progress"><div class="series-progress-label"><span>${skipped?'1 / 1':owned+' / 2'} issues owned</span><span>${skipped?'Up to date':state==='complete'?'Complete':state==='up-to-date'?'Up to date':''}</span></div><div class="progress-track" role="progressbar" aria-label="Collection progress" aria-valuemin="0" aria-valuemax="2" aria-valuenow="${owned}"><span style="width:${skipped||owned===2?100:50}%"></span></div></div><div class="detail"><div class="cv">${cover(1,'Night Signal')}</div><div><dl class="meta"><div><dt>Publisher</dt><dd>Harbor Press</dd></div><div><dt>Match</dt><dd>Confirmed</dd></div><div><dt>Monitoring</dt><dd>All issues</dd></div>${selected?'<div><dt>Issue title</dt><dd>Second light</dd></div><div><dt>In your library</dt><dd>○ Missing</dd></div>':''}</dl><div class="tools"><button>Future only</button><button aria-pressed="true">All issues</button></div>${selected?`<div class="tools"><button data-act="issue-skip">${skipped?'Unskip issue':'Skip issue'}</button></div>`:''}</div></div><div class="dock" role="group"><button class="btn primary">Send to Kapowarr</button><button class="btn">Change match</button></div><div class="filters" aria-label="Preview progress states"><button data-act="progress-incomplete">Incomplete</button><button data-act="progress-up-to-date">Up to date</button><button data-act="progress-complete">Complete</button></div></section></div>`;
+},
+settings(){
+  return `<div class="page"><h1 class="title">Settings</h1>
+    <section class="sec" style="margin-top:24px"><header><h2>Connections</h2></header>
+    ${SERVICES.map((s,k)=>`<div class="srow"><span>${s[0]}</span><span class="muted u">${s[1]}</span><span data-st="${k}">\u25CF Connected</span><button class="lnk" data-test="${k}">Test</button></div>`).join('')}
+    </section><section class="sec"><header><h2>Data and jobs</h2></header><div class="srow"><span>Database backup</span><span class="muted u">Last successful: Never</span><span>● Ready</span><button class="lnk" data-act="backup-db">Run now</button></div></section><section class="sec"><header><h2>Follows</h2><a href="#/settings" data-act="download-follows">Download follows</a></header><p class="muted">Import adds or reactivates follows and restores skipped issues. Existing follows are kept.</p><div class="tools"><label for="follows-file">Import follows</label><input id="follows-file" type="file" accept=".json,application/json"></div></section></div>`;
+}};
+
+/* ---------- router ---------- */
+let lastView='';
+function render(){
+  const [v0,arg]=(location.hash.replace(/^#\/?/,'')||'dashboard').split('/');
+  const v=views[v0]?v0:'dashboard',main=$('#main');
+  ui.onlyFollowed=location.hash.includes('/attention')?true:ui.onlyFollowed;
+  const keep=(v===lastView&&v==='notifications')?($('.index')||{}).scrollTop:0;
+  const keepPage=(v===lastView&&v!=='notifications')?main.scrollTop:0;
+  main.innerHTML=views[v](arg);
+  if(keep)$('.index').scrollTop=keep;
+  main.scrollTop=keepPage;
+  const st=$('.stage');if(st)st.scrollTop=0;
+  if(v==='notifications'&&!arg)main.scrollTop=0;
+  document.querySelectorAll('[data-v]').forEach(a=>{a.getAttribute('data-v')===v?a.setAttribute('aria-current','page'):a.removeAttribute('aria-current')});
+  $('#tabdot').hidden=!unread();
+  lastView=v;
+}
+addEventListener('hashchange',render);
+
+/* ---------- interactions ---------- */
+function kap(obj,rerender){
+  if(obj.kap!=='idle')return;
+  obj.kap='busy';render();
+  setTimeout(()=>{obj.kap='done';toast('Sent to Kapowarr');render()},1100);
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-kap],[data-mkap],[data-unread],[data-act],[data-lib],[data-follow],[data-test]');if(!b)return;
+  if(b.dataset.kap)kap(N.find(n=>n.id==b.dataset.kap));
+  else if(b.dataset.mkap)kap(MISSING.find(m=>m.id===b.dataset.mkap));
+  else if(b.dataset.unread){const n=N.find(n=>n.id==b.dataset.unread);n.u=1;$('#tabdot').hidden=false;b.textContent='Marked unread';b.disabled=true;toast('Marked unread')}
+  else if(b.dataset.lib){const x=LIB[+b.dataset.lib];x.sel=!x.sel;render()}
+  else if(b.dataset.follow){const t=b.dataset.follow;ui.follow[t]=!ui.follow[t];toast(ui.follow[t]?'Following '+t:'Unfollowed '+t);render()}
+  else if(b.dataset.test){const k=b.dataset.test,s=$(`[data-st="${k}"]`);s.textContent='Testing\u2026';setTimeout(()=>{s.textContent='\u25CF Connected'},800)}
+  else{
+    const a=b.dataset.act;
+    if(a==='series-issue'){ui.seriesIssue=true;render()}
+    if(a==='series-manage'){ui.seriesIssue=false;render()}
+    if(a==='issues-active'){ui.skippedOnly=false;render()}
+    if(a==='issues-skipped'){ui.skippedOnly=true;render()}
+    if(a==='issue-skip'){ui.issueSkipped=!ui.issueSkipped;render()}
+    if(a.startsWith('progress-')){ui.progressState=a.slice(9);render()}
+    if(a==='unread-only'){ui.onlyUnread=!ui.onlyUnread;render()}
+    if(a==='followed-only'){ui.onlyFollowed=!ui.onlyFollowed;render()}
+    if(a==='follow-sel'){const c=LIB.filter(x=>x.sel);c.forEach(x=>{x.fol=true;x.sel=false});toast('Following '+c.length+' series');render()}
+    if(a==='clear-sel'){LIB.forEach(x=>x.sel=false);render()}
+    if(a==='backup-db')toast('Database backup saved.');
+    if(a==='download-follows')toast('Follows download preview');
+    if(a==='refresh')toast('Recommendations refreshed');
+  }
+});
+document.addEventListener('input',e=>{
+  if(e.target.id==='q'){ui.q=e.target.value;const p=e.target.selectionStart;render();const i=$('#q');i.focus();i.setSelectionRange(p,p)}
+});
+document.addEventListener('mouseover',e=>{
+  const r=e.target.closest('[data-prev]');if(!r||!$('#pv'))return;
+  const [seed,title]=r.dataset.prev.split('|');
+  $('#pv').innerHTML=cover(+seed,title);$('#pvt').textContent=title;
+});
+document.addEventListener('keydown',e=>{
+  if(!/^#\/notifications\/\d+/.test(location.hash)||e.target.matches('input,select,textarea'))return;
+  const id=+location.hash.split('/')[2];
+  if(e.key==='ArrowDown'&&id<N.length){e.preventDefault();location.hash='#/notifications/'+(id+1)}
+  if(e.key==='ArrowUp'&&id>1){e.preventDefault();location.hash='#/notifications/'+(id-1)}
+});
+
+/* clock */
+function tick(){$('#clock').textContent=new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',timeZoneName:'short'})}
+tick();setInterval(tick,30000);
+const mq=matchMedia('(max-width:1023px)');
+const brand=()=>{$('#mbrand').style.display=mq.matches?'inline':'none'};brand();mq.addEventListener('change',brand);
+render();
+</script>
+</body>
+</html>

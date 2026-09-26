@@ -1,0 +1,3 @@
+import { KomgaClient } from "@/clients/komga/client";
+import { env } from "@/env";
+export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) { if (!env.KOMGA_URL || !env.KOMGA_API_KEY) return new Response(null, { status: 503 }); try { const response = await new KomgaClient({ baseUrl: env.KOMGA_URL, apiKey: env.KOMGA_API_KEY }).thumbnail((await params).id); return new Response(response.body, { headers: { "Content-Type": response.headers.get("content-type") ?? "image/jpeg", "Cache-Control": "private, max-age=3600" } }); } catch { return new Response(null, { status: 502 }); } }

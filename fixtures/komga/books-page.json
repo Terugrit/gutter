@@ -1,0 +1,1 @@
+{ "content": [{ "id": "book-1", "seriesId": "series-1", "name": "Night Signal #1", "metadata": { "number": "1", "authors": [{ "name": "Mara Okonkwo", "role": "Writer" }] }, "readProgress": { "completed": true, "readDate": "2026-09-20T12:00:00Z" } }], "totalPages": 1, "last": true }

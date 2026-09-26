@@ -1,0 +1,483 @@
+{
+  "notifications": [
+    {
+      "s": "Night Signal",
+      "i": 14,
+      "d": "16 Sep 2026",
+      "pub": "Harbor Press",
+      "t": "The Quiet Hour",
+      "w": "Mara Okonkwo",
+      "a": "Jun Tanaka",
+      "u": 1,
+      "own": 1,
+      "desc": "The signal returns, and this time it is answering back. Ilse follows the broadcast to a flooded relay station.",
+      "id": 1,
+      "seed": 1
+    },
+    {
+      "s": "The Salt Line",
+      "i": 6,
+      "d": "16 Sep 2026",
+      "pub": "Lamplight Comics",
+      "t": "Low Water",
+      "w": "Petra Voss",
+      "a": "Emil Haddad",
+      "u": 1,
+      "own": 0,
+      "desc": "A survey crew crosses the drained sea bed and finds the old shipping lanes still marked in buoys.",
+      "id": 2,
+      "seed": 2
+    },
+    {
+      "s": "Hollow Crown",
+      "i": 22,
+      "d": "16 Sep 2026",
+      "pub": "Northfield",
+      "t": "Regent",
+      "w": "Dan Ferreira",
+      "a": "Sana Mirza",
+      "u": 1,
+      "own": 1,
+      "desc": "The council votes, the palace goes quiet, and one heir refuses to leave the throne room.",
+      "id": 3,
+      "seed": 3
+    },
+    {
+      "s": "Paper Tigers",
+      "i": 9,
+      "d": "9 Sep 2026",
+      "pub": "Tin Roof",
+      "t": "Folded",
+      "w": "Lee Chao",
+      "a": "Lee Chao",
+      "u": 0,
+      "own": 1,
+      "desc": "Origami contests get dangerous when the prize is a printing press that never runs out of ink.",
+      "id": 4,
+      "seed": 4
+    },
+    {
+      "s": "Low Tide",
+      "i": 31,
+      "d": "9 Sep 2026",
+      "pub": "Harbor Press",
+      "t": "Undertow",
+      "w": "Ada Brandt",
+      "a": "Rui Costa",
+      "u": 0,
+      "own": 0,
+      "desc": "A lighthouse keeper logs every wave for thirty years. This week the log stops matching the sea.",
+      "id": 5,
+      "seed": 5
+    },
+    {
+      "s": "Ash & Ember",
+      "i": 3,
+      "d": "9 Sep 2026",
+      "pub": "Marrow & Co",
+      "t": "Kindling",
+      "w": "Noor Aziz",
+      "a": "Tomas Weiss",
+      "u": 0,
+      "own": 1,
+      "desc": "Two rival fire wardens share one watchtower and one radio. The forest picks a side.",
+      "id": 6,
+      "seed": 6
+    },
+    {
+      "s": "Copper Sky",
+      "i": 18,
+      "d": "2 Sep 2026",
+      "pub": "Northfield",
+      "t": "Weather Eye",
+      "w": "Hugo Lindqvist",
+      "a": "Ines Duarte",
+      "u": 0,
+      "own": 0,
+      "desc": "The airship yards close for the season, but the last freight run cannot wait for spring.",
+      "id": 7,
+      "seed": 7
+    },
+    {
+      "s": "Velvet Static",
+      "i": 7,
+      "d": "2 Sep 2026",
+      "pub": "Quiet Engine",
+      "t": "B-Side",
+      "w": "Kit Marlowe",
+      "a": "Yara Solis",
+      "u": 0,
+      "own": 1,
+      "desc": "A pirate radio DJ finds a tape labelled with tomorrow’s date.",
+      "id": 8,
+      "seed": 8
+    },
+    {
+      "s": "The Long Orbit",
+      "i": 12,
+      "d": "2 Sep 2026",
+      "pub": "Lamplight Comics",
+      "t": "Perigee",
+      "w": "Oren Blake",
+      "a": "Mei Lin",
+      "u": 0,
+      "own": 1,
+      "desc": "Forty years out, the ship finally hears home. Nobody agrees on what it is saying.",
+      "id": 9,
+      "seed": 9
+    },
+    {
+      "s": "Wren Street",
+      "i": 5,
+      "d": "26 Aug 2026",
+      "pub": "Tin Roof",
+      "t": "Lodgers",
+      "w": "Fern Adeyemi",
+      "a": "Paolo Greco",
+      "u": 0,
+      "own": 0,
+      "desc": "Every flat on the street has a tenant nobody remembers moving in.",
+      "id": 10,
+      "seed": 10
+    },
+    {
+      "s": "Iron Lantern",
+      "i": 40,
+      "d": "26 Aug 2026",
+      "pub": "Marrow & Co",
+      "t": "Hundredth Night",
+      "w": "Dan Ferreira",
+      "a": "Kaito Mori",
+      "u": 0,
+      "own": 1,
+      "desc": "Issue forty closes the long arc, with the lamplighters gathered at the harbour wall.",
+      "id": 11,
+      "seed": 11
+    },
+    {
+      "s": "Small Harbors",
+      "i": 2,
+      "d": "26 Aug 2026",
+      "pub": "Quiet Engine",
+      "t": "Tender",
+      "w": "Wren Kessler",
+      "a": "Lotte Maas",
+      "u": 0,
+      "own": 0,
+      "desc": "A ferry line, three islands, and a timetable that changes with the tide.",
+      "id": 12,
+      "seed": 12
+    }
+  ],
+  "missing": [
+    {
+      "s": "Night Signal",
+      "i": 12,
+      "d": "22 Jul 2026",
+      "seed": 1,
+      "id": "m0"
+    },
+    {
+      "s": "Night Signal",
+      "i": 13,
+      "d": "19 Aug 2026",
+      "seed": 1,
+      "id": "m1"
+    },
+    {
+      "s": "Hollow Crown",
+      "i": 20,
+      "d": "8 Jul 2026",
+      "seed": 3,
+      "id": "m2"
+    },
+    {
+      "s": "Hollow Crown",
+      "i": 21,
+      "d": "12 Aug 2026",
+      "seed": 3,
+      "id": "m3"
+    },
+    {
+      "s": "Low Tide",
+      "i": 29,
+      "d": "15 Jul 2026",
+      "seed": 5,
+      "id": "m4"
+    },
+    {
+      "s": "Copper Sky",
+      "i": 16,
+      "d": "22 Jul 2026",
+      "seed": 7,
+      "id": "m5"
+    },
+    {
+      "s": "Copper Sky",
+      "i": 17,
+      "d": "19 Aug 2026",
+      "seed": 7,
+      "id": "m6"
+    }
+  ],
+  "recommendedForYou": [
+    {
+      "title": "Lantern Row",
+      "publisher": "Lamplight Comics",
+      "reason": "Same writer as Night Signal"
+    },
+    {
+      "title": "The Quiet Engine",
+      "publisher": "Quiet Engine",
+      "reason": "Same publisher as Velvet Static"
+    },
+    {
+      "title": "Ninth Bell",
+      "publisher": "Northfield",
+      "reason": "Same artist as Hollow Crown"
+    },
+    {
+      "title": "Salt & Iron",
+      "publisher": "Harbor Press",
+      "reason": "Fans of The Salt Line read this"
+    },
+    {
+      "title": "Kestrel Point",
+      "publisher": "Harbor Press",
+      "reason": "Same publisher as Low Tide"
+    },
+    {
+      "title": "Drift Season",
+      "publisher": "Tin Roof",
+      "reason": "Similar genre to Paper Tigers"
+    },
+    {
+      "title": "Ember Court",
+      "publisher": "Marrow & Co",
+      "reason": "Same writer as Ash & Ember"
+    },
+    {
+      "title": "Orbit Keepers",
+      "publisher": "Lamplight Comics",
+      "reason": "Fans of The Long Orbit read this"
+    },
+    {
+      "title": "Glass Harvest",
+      "publisher": "Northfield",
+      "reason": "Same artist as Copper Sky"
+    },
+    {
+      "title": "Back Lot Ghosts",
+      "publisher": "Quiet Engine",
+      "reason": "Same writer as Velvet Static"
+    }
+  ],
+  "somethingDifferent": [
+    {
+      "title": "Moss Kingdom",
+      "publisher": "Tin Roof",
+      "reason": "Picked at random"
+    },
+    {
+      "title": "The Clockwork Ferry",
+      "publisher": "Harbor Press",
+      "reason": "Picked at random"
+    },
+    {
+      "title": "Nightshift Saints",
+      "publisher": "Marrow & Co",
+      "reason": "Picked at random"
+    },
+    {
+      "title": "Sundial",
+      "publisher": "Lamplight Comics",
+      "reason": "Picked at random"
+    },
+    {
+      "title": "Hush Protocol",
+      "publisher": "Quiet Engine",
+      "reason": "Picked at random"
+    },
+    {
+      "title": "Paper Moon Motel",
+      "publisher": "Tin Roof",
+      "reason": "Picked at random"
+    },
+    {
+      "title": "The Fifth Season Club",
+      "publisher": "Northfield",
+      "reason": "Picked at random"
+    },
+    {
+      "title": "Tidewrack",
+      "publisher": "Harbor Press",
+      "reason": "Picked at random"
+    },
+    {
+      "title": "Copperhead Lane",
+      "publisher": "Marrow & Co",
+      "reason": "Picked at random"
+    },
+    {
+      "title": "Bright Machines",
+      "publisher": "Lamplight Comics",
+      "reason": "Picked at random"
+    }
+  ],
+  "library": [
+    {
+      "id": 0,
+      "t": "Night Signal",
+      "seed": 1,
+      "pub": "Harbor Press",
+      "fol": true
+    },
+    {
+      "id": 1,
+      "t": "The Salt Line",
+      "seed": 2,
+      "pub": "Lamplight Comics",
+      "fol": true
+    },
+    {
+      "id": 2,
+      "t": "Hollow Crown",
+      "seed": 3,
+      "pub": "Northfield",
+      "fol": true
+    },
+    {
+      "id": 3,
+      "t": "Paper Tigers",
+      "seed": 4,
+      "pub": "Tin Roof",
+      "fol": true
+    },
+    {
+      "id": 4,
+      "t": "Low Tide",
+      "seed": 5,
+      "pub": "Marrow & Co",
+      "fol": true
+    },
+    {
+      "id": 5,
+      "t": "Ash & Ember",
+      "seed": 6,
+      "pub": "Quiet Engine",
+      "fol": true
+    },
+    {
+      "id": 6,
+      "t": "Copper Sky",
+      "seed": 7,
+      "pub": "Harbor Press",
+      "fol": true
+    },
+    {
+      "id": 7,
+      "t": "Velvet Static",
+      "seed": 8,
+      "pub": "Lamplight Comics",
+      "fol": false
+    },
+    {
+      "id": 8,
+      "t": "The Long Orbit",
+      "seed": 9,
+      "pub": "Northfield",
+      "fol": false
+    },
+    {
+      "id": 9,
+      "t": "Wren Street",
+      "seed": 10,
+      "pub": "Tin Roof",
+      "fol": false
+    },
+    {
+      "id": 10,
+      "t": "Iron Lantern",
+      "seed": 11,
+      "pub": "Marrow & Co",
+      "fol": false
+    },
+    {
+      "id": 11,
+      "t": "Small Harbors",
+      "seed": 12,
+      "pub": "Quiet Engine",
+      "fol": false
+    },
+    {
+      "id": 12,
+      "t": "Glass Meridian",
+      "seed": 13,
+      "pub": "Harbor Press",
+      "fol": false
+    },
+    {
+      "id": 13,
+      "t": "Tin Saints",
+      "seed": 14,
+      "pub": "Lamplight Comics",
+      "fol": false
+    },
+    {
+      "id": 14,
+      "t": "Moth & Lantern",
+      "seed": 15,
+      "pub": "Northfield",
+      "fol": false
+    },
+    {
+      "id": 15,
+      "t": "The Understudy",
+      "seed": 16,
+      "pub": "Tin Roof",
+      "fol": false
+    },
+    {
+      "id": 16,
+      "t": "Field Notes from Nowhere",
+      "seed": 17,
+      "pub": "Marrow & Co",
+      "fol": false
+    },
+    {
+      "id": 17,
+      "t": "Salt Road",
+      "seed": 18,
+      "pub": "Quiet Engine",
+      "fol": false
+    }
+  ],
+  "services": [
+    {
+      "name": "Komga",
+      "url": "http://komga:25600"
+    },
+    {
+      "name": "Metron",
+      "url": "metron.cloud"
+    },
+    {
+      "name": "ComicVine",
+      "url": "comicvine.gamespot.com"
+    },
+    {
+      "name": "Kapowarr",
+      "url": "http://kapowarr:5656"
+    },
+    {
+      "name": "ntfy",
+      "url": "http://ntfy:80/comics"
+    }
+  ],
+  "readingStats": {
+    "booksRead": 128,
+    "inProgress": 6,
+    "seriesCompleted": 14,
+    "readThisMonth": 9
+  }
+}

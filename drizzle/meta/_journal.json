@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1790337660477,
+      "tag": "0000_m02_issue_controls",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1790342063351,
+      "tag": "0001_eminent_vance_astro",
+      "breakpoints": true
+    }
+  ]
+}

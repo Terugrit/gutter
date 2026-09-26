@@ -1,0 +1,10 @@
+import { execFileSync, spawn } from "node:child_process";
+import { resolve } from "node:path";
+const env = process.env;
+const cli = resolve("node_modules/tsx/dist/cli.mjs");
+execFileSync(process.execPath, [cli, "src/db/migrate.ts"], { env, stdio: "inherit" });
+execFileSync(process.execPath, [cli, "src/db/seed-visual.ts"], { env, stdio: "inherit" });
+const server = spawn(process.execPath, [resolve("node_modules/next/dist/bin/next"), "dev", "--port", "3001", "--hostname", "127.0.0.1"], { env, stdio: "inherit" });
+process.on("SIGINT", () => server.kill("SIGINT"));
+process.on("SIGTERM", () => server.kill("SIGTERM"));
+server.on("exit", (code) => process.exit(code ?? 0));

@@ -1,0 +1,11 @@
+import { mkdirSync } from "node:fs";
+import { dirname } from "node:path";
+import Database from "better-sqlite3";
+import sample from "../../docs/design/sample-data.json";
+import { env } from "../env";
+if (process.env.NODE_ENV === "production" && !process.argv.includes("--force")) throw new Error("Refusing to seed production. Pass --force to continue.");
+const path = env.GUTTER_DB_PATH; if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
+const sqlite = new Database(path); sqlite.exec("CREATE TABLE IF NOT EXISTS kv_cache (key TEXT PRIMARY KEY, value_json TEXT NOT NULL, fetched_at TEXT NOT NULL, ttl_seconds INTEGER NOT NULL)");
+const now = new Date().toISOString(); const insert = sqlite.prepare("INSERT OR REPLACE INTO kv_cache (key, value_json, fetched_at, ttl_seconds) VALUES (?, ?, ?, ?)");
+for (const [key, value] of Object.entries(sample)) insert.run(`mock:${key}`, JSON.stringify(value), now, 31536000);
+sqlite.close(); console.log("Mock design data seeded.");

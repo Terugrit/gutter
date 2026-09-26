@@ -1,0 +1,11 @@
+node_modules
+.npmrc
+.next
+.next-dev
+.git
+.env
+data
+coverage
+.next-visual
+test-results
+playwright-report

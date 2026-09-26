@@ -1,0 +1,1 @@
+export function Dock({ children, fixed = false }: { children: React.ReactNode; fixed?: boolean }) { return <div className={`dock${fixed ? " fixed" : ""}`} role="group" aria-label="Actions">{children}</div>; }

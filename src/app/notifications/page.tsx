@@ -1,0 +1,5 @@
+import { Cover } from "@/components/cover";
+import { Headline } from "@/components/headline";
+import { getNotifications, oldestNotificationDate } from "@/lib/services/notifications";
+import Link from "next/link";
+export default async function NotificationsPage() { const [notifications, oldest] = await Promise.all([getNotifications(), oldestNotificationDate()]); const newest = notifications[0]; if (!newest) return <section className="stage"><Headline lines={["Nothing new"]} /><p className="desc"><Link href="/library">Browse your library</Link></p></section>; return <section className="stage" aria-label="Notification detail"><Headline lines={[`${notifications.filter((item) => item.u).length} unread`, `${notifications.length} notifications`, `Since ${oldest}`]} /><div className="detail"><Cover src={newest.coverUrl ?? undefined} seed={newest.seed} title={newest.s} number={newest.i} /><p className="desc" style={{ marginTop: 0 }}>Select a notification on the left to see the issue, its creators and a shortcut to Kapowarr.</p></div></section>; }

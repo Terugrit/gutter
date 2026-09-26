@@ -1,0 +1,5 @@
+[
+  { "id": 11, "series": "The Question", "year_began": 1987, "publisher": { "id": 1, "name": "DC" }, "cv_id": 123 },
+  { "id": 12, "series": "The Question", "year_began": 2005, "publisher": { "id": 1, "name": "DC" }, "cv_id": 456 },
+  { "id": 13, "series": "Night Signal", "year_began": 2024, "publisher": { "id": 2, "name": "Atlas" }, "cv_id": 789 }
+]

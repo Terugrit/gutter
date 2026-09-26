@@ -1,0 +1,10 @@
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { http, HttpResponse } from "msw";
+import { setupServer } from "msw/node";
+import books from "../../../fixtures/komga/books-page.json";
+import series from "../../../fixtures/komga/series-page.json";
+import { KomgaClient } from "./client";
+const server = setupServer(http.post("http://komga.test/api/v1/series/list", ({ request }) => request.headers.get("X-API-Key") === "key" ? HttpResponse.json(series) : new HttpResponse(null, { status: 401 })), http.post("http://komga.test/api/v1/books/list", () => HttpResponse.json(books)), http.get("http://komga.test/api/v1/libraries", () => HttpResponse.json([{ id: "comics", name: "Comics" }])));
+beforeAll(() => server.listen({ onUnhandledRequest: "error" })); afterEach(() => server.resetHandlers()); afterAll(() => server.close());
+describe("KomgaClient", () => it("paginates and validates series, ownership metadata and read progress", async () => { const client = new KomgaClient({ baseUrl: "http://komga.test", apiKey: "key" }); await expect(client.listSeries()).resolves.toMatchObject([{ id: "series-1", name: "Night Signal" }]); await expect(client.listBooks()).resolves.toMatchObject([{ seriesId: "series-1", metadata: { number: "1" }, readProgress: { completed: true } }]); }));
+describe("KomgaClient", () => it("lists accessible libraries", async () => { await expect(new KomgaClient({ baseUrl: "http://komga.test", apiKey: "key" }).listLibraries()).resolves.toEqual([{ id: "comics", name: "Comics" }]); }));
