@@ -1,12 +1,10 @@
 name: Gutter
-version: "0.1.0"
+version: "0.1.1"
 slug: gutter
 description: Follow comic releases from Komga and send missing issues to Kapowarr
 url: https://github.com/terugrit/gutter
 image: ghcr.io/terugrit/gutter
 stage: experimental
-startup: application
-boot: auto
 init: false
 backup: cold
 arch:
@@ -17,7 +15,6 @@ ports:
 ports_description:
   3000/tcp: Gutter web interface
 webui: http://[HOST]:[PORT:3000]
-watchdog: http://[HOST]:[PORT:3000]/api/health
 options:
   ntfy_url: https://ntfy.sh
   kapowarr_check_cron: "*/15 * * * *"
