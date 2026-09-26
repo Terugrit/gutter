@@ -126,6 +126,7 @@ dl.meta dd{margin:0}
 .tools button{background:none;border:0;padding:8px 0;cursor:pointer;font-size:13px;font-weight:500;text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--rule)}
 .tools button[aria-pressed="true"]{text-decoration-color:var(--accent);text-decoration-thickness:2px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:36px 22px}
+.grid > div{display:flex;flex-direction:column}
 .item{background:none;border:0;padding:0;text-align:left;cursor:pointer;display:block;width:100%}
 .item .cv{position:relative;border-bottom:3px solid transparent}
 .item.sel .cv{border-bottom-color:var(--accent)}
@@ -134,7 +135,7 @@ dl.meta dd{margin:0}
 .item .cap{border-top:1px solid var(--rule);margin-top:8px;padding-top:8px;font-size:15px;font-weight:500;line-height:1.3}
 .item:hover .cap{border-top-color:var(--text)}
 .item .cap small{display:block;font-weight:400;font-size:13px;color:var(--muted);margin-top:3px}
-.grid .lnk{display:inline-block;margin-top:6px;padding:12px 0;font-size:13px;font-weight:500;text-decoration:underline;text-underline-offset:3px}
+.grid .lnk{display:inline-block;margin-top:auto;padding:18px 0 12px;font-size:13px;font-weight:500;text-decoration:underline;text-underline-offset:3px}
 
 /* discover */
 .disc{display:grid;grid-template-columns:minmax(0,1fr) 240px;gap:56px;align-items:start}
@@ -201,5 +202,14 @@ dl.meta dd{margin:0}
 .series-progress-label{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:13px;margin-bottom:8px}
 .progress-track{height:2px;background:var(--rule)}
 .progress-track>span{display:block;height:100%;background:var(--accent)}
+
+/* M06: reading recap, copied from the preview. */
+.recap-months{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:8px;margin:20px 0}
+.recap-month{display:flex;flex-direction:column;gap:8px;font-size:12px;font-weight:500;color:var(--muted)}
+.recap-month span{display:block;height:48px;border-bottom:2px solid var(--rule);position:relative}
+.recap-month i{display:block;position:absolute;bottom:0;left:0;right:0;background:var(--accent);min-height:0}
+.follow-suggestions figcaption{display:flex;flex-direction:column;align-items:flex-start}
+.follow-suggestions figcaption button{align-self:flex-start;min-height:44px}
+@media(max-width:420px){.recap-months{gap:4px}.recap-month{font-size:12px}}
 
 .index button.row{width:100%;border-left:0;border-top:0;border-right:0;background:none;padding:0;text-align:left;cursor:pointer}

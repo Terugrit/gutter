@@ -1,0 +1,63 @@
+configuration:
+  komga_url:
+    name: Komga URL
+    description: URL reachable from the Gutter app container; do not use localhost for another app or container.
+  komga_api_key:
+    name: Komga API key
+    description: API key created in Komga.
+  metron_user:
+    name: Metron username
+    description: Username for Metron Comic Book Database.
+  metron_password:
+    name: Metron password
+    description: Password for Metron Comic Book Database.
+  comicvine_api_key:
+    name: ComicVine API key
+    description: Used only when Metron has no ComicVine volume ID.
+  kapowarr_url:
+    name: Kapowarr URL
+    description: URL reachable from the Gutter app container; do not use localhost for another app or container.
+  kapowarr_api_key:
+    name: Kapowarr API key
+    description: API key created in Kapowarr.
+  kapowarr_check_cron:
+    name: Kapowarr check schedule
+    description: Cron expression for checking download status.
+  ntfy_url:
+    name: ntfy URL
+    description: Base URL of the ntfy server.
+  ntfy_topic:
+    name: ntfy topic
+    description: Topic that receives Gutter notifications.
+  ntfy_token:
+    name: ntfy token
+    description: Optional access token for a protected topic.
+  action_secret:
+    name: Notification action secret
+    description: Optional secret of at least 32 characters that enables ntfy action buttons.
+  app_base_url:
+    name: Gutter public URL
+    description: URL reachable from your phone, including the configured Gutter port, for notification links.
+  weekly_digest_cron:
+    name: Weekly digest schedule
+    description: Cron expression for the weekly digest.
+  release_check_cron:
+    name: Release check schedule
+    description: Cron expression for checking Metron releases.
+  timezone:
+    name: Time zone
+    description: IANA time zone used by schedules and local dates, for example Europe/Amsterdam.
+  recommendation_seed_count:
+    name: Recommendation seed count
+    description: Number of local series used to produce recommendations (3–5).
+  recommendation_exclusion_days:
+    name: Recommendation exclusion days
+    description: Days before a recommendation may be shown again (1–90).
+  backup_cron:
+    name: Database backup schedule
+    description: Cron expression for SQLite backups.
+  backup_dir:
+    name: Backup directory
+    description: Optional writable path. Keep it under /data unless another directory is mounted into the app.
+network:
+  3000/tcp: Gutter web interface

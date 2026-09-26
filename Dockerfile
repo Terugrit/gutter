@@ -14,8 +14,10 @@ RUN cp -r .next/static .next/standalone/.next/static
 
 FROM node:22-alpine AS runner
 WORKDIR /app
-ENV NODE_ENV=production
+ENV NODE_ENV=production \
+    HOSTNAME=0.0.0.0 \
+    PORT=3000
 RUN apk add --no-cache libc6-compat && corepack enable
 COPY --from=builder /app ./
 EXPOSE 3000
-CMD ["sh", "-c", "pnpm db:migrate && node .next/standalone/server.js"]
+CMD ["node", "scripts/start.mjs"]

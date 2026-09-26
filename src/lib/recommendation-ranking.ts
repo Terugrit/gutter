@@ -5,6 +5,7 @@ export type RecommendationSeed = {
   year?: number;
   genres?: string[];
   creators?: string[];
+  writers?: string[];
   characters?: string[];
   seriesType?: string;
   followed: boolean;
@@ -17,6 +18,7 @@ export type RecommendationCandidate = {
   yearBegan?: number;
   genres?: string[];
   creators?: string[];
+  writers?: string[];
   characters?: string[];
   seriesType?: string;
   coverUrl: string;
@@ -24,10 +26,18 @@ export type RecommendationCandidate = {
 
 export type RankedRecommendation = RecommendationCandidate & {
   reason: string;
+  why: RecommendationReason;
   seedId: string;
   overlaps: string[];
   score: number;
 };
+
+export type RecommendationReason = { kind: "writer" | "publisher" | "random"; name: string; sourceSeries?: string };
+export function reasonText(reason: RecommendationReason) {
+  if (reason.kind === "writer") return `Shares writer ${reason.name} with ${reason.sourceSeries}`;
+  if (reason.kind === "publisher") return `Same publisher as ${reason.sourceSeries} (${reason.name})`;
+  return `Random pick from ${reason.name}`;
+}
 
 type Match = { seed: RecommendationSeed; score: number; overlaps: string[] };
 
@@ -75,6 +85,7 @@ function match(candidate: RecommendationCandidate, seed: RecommendationSeed): Ma
   if (candidate.publisher && seed.publisher && candidate.publisher.toLocaleLowerCase() === seed.publisher.toLocaleLowerCase() && candidate.publisher !== "Unknown publisher") { score += 5; overlaps.push("publisher"); }
   if (overlap(candidate.genres, seed.genres)) { score += 4; overlaps.push("genre"); }
   if (overlap(candidate.creators, seed.creators)) { score += 4; overlaps.push("creator"); }
+  if (overlap(candidate.writers, seed.writers)) { score += 4; overlaps.push("writer"); }
   if (overlap(candidate.characters, seed.characters)) { score += 4; overlaps.push("character"); }
   if (candidate.seriesType && seed.seriesType && candidate.seriesType.toLocaleLowerCase() === seed.seriesType.toLocaleLowerCase()) { score += 2; overlaps.push("series type"); }
   if (candidate.yearBegan && seed.year) {
@@ -90,6 +101,14 @@ function reason(selected: Match) {
   if (labels.length === 1 && labels[0] === "era") return `From the same era as ${selected.seed.title}`;
   if (labels.length === 1) return `Same ${labels[0]} as ${selected.seed.title}`;
   return `Same ${labels.slice(0, -1).join(", ")} and ${labels.at(-1)} as ${selected.seed.title}`;
+}
+function whyThis(candidate: RecommendationCandidate, selected: Match): RecommendationReason {
+  if (selected.overlaps.includes("writer")) {
+    const writer = candidate.writers?.find((name) => selected.seed.writers?.some((other) => other.toLocaleLowerCase() === name.toLocaleLowerCase()));
+    if (writer) return { kind: "writer", name: writer, sourceSeries: selected.seed.title };
+  }
+  if (selected.overlaps.includes("publisher")) return { kind: "publisher", name: candidate.publisher, sourceSeries: selected.seed.title };
+  return { kind: "random", name: candidate.publisher };
 }
 
 export function rankRecommendations(input: {
@@ -143,7 +162,7 @@ export function rankRecommendations(input: {
     const selected = eligible.find((value) => { draw -= value.available.score ** 2; return draw < 0; }) ?? eligible.at(-1)!;
     const { candidate } = selected.item;
     const { available } = selected;
-    chosen.push({ ...candidate, reason: reason(available), seedId: available.seed.id, overlaps: available.overlaps, score: available.score });
+    chosen.push({ ...candidate, reason: reason(available), why: whyThis(candidate, available), seedId: available.seed.id, overlaps: available.overlaps, score: available.score });
     publishers.set(candidate.publisher, (publishers.get(candidate.publisher) ?? 0) + 1);
     seeds.set(available.seed.id, (seeds.get(available.seed.id) ?? 0) + 1);
     seenTitles.add(normalizedTitle(candidate.title));

@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { followedSeries, issues, kvCache } from "@/db/schema";
 export type LiveLibraryItem = { id: string; t: string; pub: string; seed: number; fol: boolean; attention: boolean; thumbnail: string };
@@ -10,19 +10,41 @@ export async function applyKomgaOwnership(followIds?: readonly number[]) {
   let books: CachedBook[];
   try { books = JSON.parse(row.valueJson) as CachedBook[]; } catch { return; }
   const follows = await db.select().from(followedSeries).where(eq(followedSeries.active, true));
-  for (const follow of follows.filter((item) => !item.komgaSeriesId.startsWith("discover:") && (!followIds || followIds.includes(item.id)))) {
-    await db.update(issues).set({ owned: false }).where(eq(issues.followedSeriesId, follow.id));
-    const numbers = new Set(books.filter((book) => book.seriesId === follow.komgaSeriesId).map((book) => book.metadata?.number?.trim()).filter((number): number is string => Boolean(number)));
-    for (const number of numbers) await db.update(issues).set({ owned: true }).where(and(eq(issues.followedSeriesId, follow.id), eq(issues.number, number)));
+  const numbersBySeries = new Map<string, Set<string>>();
+  for (const book of books) {
+    const number = book.metadata?.number?.trim();
+    if (!number) continue;
+    const numbers = numbersBySeries.get(book.seriesId) ?? new Set<string>();
+    numbers.add(number);
+    numbersBySeries.set(book.seriesId, numbers);
   }
+  const targets = follows.filter((item) => !item.komgaSeriesId.startsWith("discover:") && (!followIds || followIds.includes(item.id)));
+  db.transaction((tx) => {
+    for (const follow of targets) {
+      tx.update(issues).set({ owned: false }).where(eq(issues.followedSeriesId, follow.id)).run();
+      const numbers = [...(numbersBySeries.get(follow.komgaSeriesId) ?? [])];
+      // Keep each IN clause below SQLite's bind-parameter limit for unusually long series.
+      for (let start = 0; start < numbers.length; start += 900) {
+        tx.update(issues).set({ owned: true }).where(and(eq(issues.followedSeriesId, follow.id), inArray(issues.number, numbers.slice(start, start + 900)))).run();
+      }
+    }
+  });
 }
 export async function reconcileDiscoverFollows(librarySeries: Array<{ id: string; t: string; pub: string }>) {
   const follows = await db.select().from(followedSeries);
   const normalized = (value: string) => value.normalize("NFKD").toLocaleLowerCase().replace(/[^a-z0-9]/g, "");
+  const byTitle = new Map<string, Array<{ id: string; t: string; pub: string }>>();
+  const existingByKomgaId = new Map(follows.map((item) => [item.komgaSeriesId, item]));
+  for (const series of librarySeries) {
+    const title = normalized(series.t);
+    const matches = byTitle.get(title) ?? [];
+    matches.push(series);
+    byTitle.set(title, matches);
+  }
   for (const discovery of follows.filter((item) => item.active && item.komgaSeriesId.startsWith("discover:"))) {
-    const match = librarySeries.find((item) => normalized(item.t) === normalized(discovery.title) && (!discovery.publisher || normalized(discovery.publisher) === normalized(item.pub)));
+    const match = byTitle.get(normalized(discovery.title))?.find((item) => !discovery.publisher || normalized(discovery.publisher) === normalized(item.pub));
     if (!match) continue;
-    const real = follows.find((item) => item.komgaSeriesId === match.id);
+    const real = existingByKomgaId.get(match.id);
     if (real) await db.update(followedSeries).set({ active: false }).where(eq(followedSeries.id, discovery.id));
     else await db.update(followedSeries).set({ komgaSeriesId: match.id, title: match.t, publisher: match.pub }).where(eq(followedSeries.id, discovery.id));
   }

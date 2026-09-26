@@ -27,6 +27,9 @@ src/db/                        schema, migrations, seed-mock script
 src/lib/                       matching, recommendations, services (data access used by pages)
 docs/api-notes/                one short note per integration (written before the client)
 docs/design/                   preview.html, globals.css, sample-data.json, screenshots/, reference image
+gutter/                        Home Assistant app metadata, Configuration UI schema, docs and translations
+scripts/start.mjs              shared container entrypoint; maps HA options to the existing env contract
+.github/workflows/             multi-architecture Home Assistant app image publishing
 ```
 
 ## Rules
@@ -85,6 +88,7 @@ docs/design/                   preview.html, globals.css, sample-data.json, scre
 
 ## M6 implementation notes
 - Recommended for you uses the same `discover:pool` locally, with cached `year_began` and `issue_count` when available. It scores 3–5 random Komga/followed seeds and draws weighted picks from the best 50, with seed and publisher caps. `discover:recommended-history` tracks `last_shown_at` for the exclusion window and `discover:recommended-day` fixes picks for the local day. The refresh action and daily midnight job check art for at most ten selected candidates through the existing Metron issue-preview cache; rendering Discover never calls Metron for recommendations.
+- Page reads never rotate Recommended picks: only the midnight/startup/manual refresh saves a new set after checking art. When no new covers are available, keep the previous covered set. Startup retries a cached all-coverless set when Metron is configured.
 - Reading cards use cached Komga `books/list` records and their documented `readProgress`; when no live Komga cache exists, the dashboard shows a setup message rather than invented statistics.
 - Discover results are generated weekly (and once after the initial Komga sync when no cache exists), cached in `kv_cache`, and refreshed by the explicit Discover action. The random section rotates through up to 200 candidates in the `discover:pool` cache and samples up to five English Metron series pages only when the pool is thin or on the weekly refresh. It checks issue covers only for selected candidates, caches those checks, and limits each refresh to ten new issue previews. Metron calls stay behind the shared metadata limiter, which observes quota headers.
 - A Discover follow is stored as a confirmed Metron-backed follow using the `discover:<metron-series-id>` sentinel, since the recommendation deliberately is not already in Komga. Dismissed Metron IDs are persisted in `kv_cache` and excluded at later refreshes.
@@ -120,3 +124,21 @@ docs/design/                   preview.html, globals.css, sample-data.json, scre
 - `issues.previous_date` and `issues.date_changed_at` record the latest change between two known Metron dates for an unowned issue. A first announced date is not marked as moved. The idempotent runtime migration and `drizzle/0001_eminent_vance_astro.sql` add these nullable columns.
 - `getUpcomingIssues()` reads only active matched cache rows, excluding owned, skipped, annual, variant, and nonnumeric issues, for the next 30 local days. The dashboard groups its strip by calendar week and labels date moves from the last 14 days.
 - The weekly digest includes a Moved section for eligible changes since the last sent digest when either date is today or later. A slip-only week sends; an empty week does not. The weekly dedupe key remains unchanged.
+
+## M05 Kapowarr loop
+- `KAPOWARR_CHECK_CRON` (default `*/15 * * * *`) schedules `check-kapowarr`. Optional `ACTION_SECRET` (at least 32 characters) enables ntfy action buttons.
+- The job reads Kapowarr only for active matched follows with a saved volume and missing released issues. It caches status in `kv_cache`; series pages read the cache only.
+- A files-ready transition requests a selected-library Komga scan at most once per 30 minutes. The hourly sync reads completed scans. The first sync after library selection establishes an ownership baseline without arrival alerts. Later arrivals send one best-effort ntfy message per series per sync.
+- Settings also exposes `POST /api/jobs/scan-komga` as a manual selected-library file scan, separate from the library data sync. Komga's 202 only accepts a scan; the existing hourly sync reads finished scans. Pending Kapowarr completions persist through the automatic 30-minute debounce and are retried by the next check. A manual scan bypasses debounce and coalesces any pending scan for that library.
+- Mark read and Send to Kapowarr ntfy buttons use 30-day HMAC tokens in POST bodies. A Send button tap is an explicit user action; detecting a release alone never starts a Kapowarr download. Repeat taps on a saved Kapowarr volume do not start another search.
+
+## M06 reading and Discover
+- Library's "Reading, not following" strip uses cached Komga books with two dated completed reads within 60 days, at most four unfollowed, undismissed series. Dismissals persist in `kv_cache` under `follow-suggestions:dismissed`; Follow reuses `/api/follows`.
+- Recommendation cache entries may carry optional structured `why` provenance (writer, publisher, random). Existing entries without it remain valid and show no new reason line until refreshed. Candidate writers are used only when both cached sides identify the same writer; no extra page-load metadata calls.
+- `/recap` and `/recap/[year]` read only cached Komga completion dates, grouped by `TZ`. Undated/in-progress books are excluded from year, streak, and month calculations. Recap is linked from the dashboard, not the nav; no new DB schema or job is required.
+- `tests/visual/render-m06-preview.mjs` renders the M06 additions in the approved preview at desktop and mobile sizes into `docs/design/screenshots/`. The app's M06 visual baselines are in `tests/visual/snapshots/`.
+
+## Home Assistant app packaging
+- `repository.yaml` and `gutter/config.yaml` make this GitHub repository installable as a Home Assistant app repository. The app uses an exposed configurable port, not Ingress, because the Next.js build assumes root-relative asset paths.
+- `scripts/start.mjs` reads `/data/options.json` when Supervisor provides it, maps app options to the validated environment variables, fixes the database at `/data/app.db`, runs migrations, and starts the standalone server. Without that file, the same image continues to use Docker Compose environment variables.
+- `gutter/config.yaml` and `gutter/CHANGELOG.md` versions must be bumped together before publishing an app update. `.github/workflows/home-assistant-app.yaml` publishes `amd64` and `aarch64` images to `ghcr.io/terugrit/gutter`.

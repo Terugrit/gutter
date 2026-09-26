@@ -15,6 +15,15 @@ export function migrateSchema(sqlite: Database.Database) {
     addColumn("issues", "previous_date", "TEXT");
     addColumn("issues", "date_changed_at", "INTEGER");
     addColumn("followed_series", "series_status", "TEXT");
+    // These cover the predicates used by issue lists, release checks, and notification reads.
+    // Keep them here so existing installations receive the same upgrades as new databases.
+    sqlite.exec(`
+      CREATE INDEX IF NOT EXISTS issues_followed_series_active_idx ON issues (followed_series_id, active);
+      CREATE INDEX IF NOT EXISTS issues_active_owned_store_date_idx ON issues (active, owned, store_date);
+      CREATE INDEX IF NOT EXISTS notifications_issue_type_idx ON notifications (issue_id, type);
+      CREATE INDEX IF NOT EXISTS notifications_type_read_at_idx ON notifications (type, read_at);
+      CREATE INDEX IF NOT EXISTS followed_series_active_match_status_idx ON followed_series (active, match_status);
+    `);
     const mockEntry = sqlite.prepare("SELECT 1 FROM kv_cache WHERE key LIKE 'mock:%' LIMIT 1").get();
     if (mockEntry) sqlite.prepare("DELETE FROM kv_cache WHERE key LIKE 'mock:%'").run();
   })();

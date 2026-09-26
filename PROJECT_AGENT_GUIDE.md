@@ -72,3 +72,22 @@ table rows. They cannot detect the entire app process being down.
 - `issues.previous_date` and `issues.date_changed_at` keep the latest known-date change for an unowned issue. First date announcements are not marked as moved. The idempotent runtime migration and `drizzle/0001_eminent_vance_astro.sql` add both nullable columns.
 - `getUpcomingIssues()` reads active matched cached issues in the next 30 local days, using the shared exclusion helper. The dashboard groups them by week and marks moves from the last 14 days.
 - The weekly digest includes a Moved section for eligible changes after the last sent digest when either date is today or later. Slip-only weeks send; empty weeks skip. It uses the existing weekly dedupe key.
+
+## M05 Kapowarr loop
+
+`KAPOWARR_CHECK_CRON` (default `*/15 * * * *`) schedules `check-kapowarr`, which reads `/api/volumes/{id}` and `/api/activity/queue` only for active matched follows with a Kapowarr volume and missing released issues. It stores a short-lived `kapowarr:status:<follow-id>` entry in `kv_cache`. The series status line reads only this cache. Settings can run the check manually.
+
+When a status transitions to files-ready, the job asks Komga to scan the selected library, with a 30-minute `kv_cache` debounce. The hourly sync reads completed scans. A per-library ownership baseline suppresses alerts on first sync after selection. Later newly owned missing issues produce one best-effort ntfy message per series per sync; no notification row or retry is created.
+Settings has a separate **Scan library files** action for Komga; it requests a selected-library scan even during the automatic debounce. Komga's 202 only means accepted: the hourly Gutter sync reads completed scan results. Kapowarr ready transitions leave a durable pending scan when throttled and retry it on later checks; the UI's status expiry does not erase the last observed transition.
+
+Optional `ACTION_SECRET` (minimum 32 characters) enables ntfy HTTP buttons. New-release notifications have Mark read, plus Send to Kapowarr when a ComicVine ID exists and no Kapowarr volume is stored. Each button sends a 30-day HMAC token in the POST body to `/api/actions/mark-read` or `/api/actions/send-kapowarr`. The token authorizes only that action and notification. A button tap is an explicit Kapowarr send; receiving a notification never starts a download. Settings reports whether buttons are on.
+
+## M06 reading and Discover
+
+`src/lib/services/follow-suggestions.ts` derives up to four eligible unfollowed series from `komga:books` with at least two dated completed reads in the last 60 days. `/api/follow-suggestions/[id]/dismiss` saves a permanent `follow-suggestions:dismissed` cache entry. The Library strip uses `/api/follows` for Follow and hides when empty.
+
+Recommendations keep the old string `reason` for cache compatibility and add an optional structured `why` object for the new card and preview explanation. Missing `why` displays no new line. Metadata reads remain in the existing rate-limited refresh pipeline.
+
+Recommended page reads do not rotate the daily set. Midnight, startup or manual refresh checks candidate covers (at most ten new previews) before saving new picks. If none has art, the previous covered set remains; startup retries an all-coverless cache when Metron is configured. This fixes an earlier read-time rotation that replaced every Recommended cover with an empty URL.
+
+`/recap` defaults to the current local year; `/recap/[year]` selects another year. `src/lib/services/recap.ts` aggregates completed Komga book `readDate` values in `TZ`. Only years with dated reads are listed. Series finished requires every cached book to have a dated completion. No schema migration, cron, or additional Komga API call is needed.

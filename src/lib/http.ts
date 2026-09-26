@@ -1,6 +1,13 @@
 export async function fetchWithRetry(fetcher: typeof fetch, input: RequestInfo | URL, init: RequestInit = {}, attempts = 3, observeResponse?: (response: Response) => boolean | void): Promise<Response> {
   for (let attempt = 0; attempt < attempts; attempt += 1) {
-    const response = await fetcher(input, { ...init, signal: init.signal ?? AbortSignal.timeout(15000) });
+    let response: Response;
+    try {
+      response = await fetcher(input, { ...init, signal: init.signal ?? AbortSignal.timeout(15000) });
+    } catch (error) {
+      if (init.signal?.aborted || attempt === attempts - 1) throw error;
+      await new Promise((resolve) => setTimeout(resolve, Math.min(30000, 250 * 2 ** attempt)));
+      continue;
+    }
     const mayRetry = observeResponse?.(response) !== false;
     if (!mayRetry && (response.status === 429 || response.status === 503)) return response;
     if (response.status !== 429 && response.status !== 503) return response;

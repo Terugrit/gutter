@@ -42,4 +42,12 @@ describe("local Recommended ranking", () => {
     expect(result).toHaveLength(10);
     expect(new Set(result.map((item) => item.publisher)).size).toBeGreaterThanOrEqual(4);
   });
+  it("records named writer, publisher, or random provenance without inventing a writer", () => {
+    const writer = rankRecommendations({ ...input("2026-09-24"), seeds: [{ ...seeds[0], writers: ["Ada Writer"] }], candidates: [{ ...candidates[0], writers: ["Ada Writer"] }] });
+    expect(writer[0].why).toEqual({ kind: "writer", name: "Ada Writer", sourceSeries: "Seed 0" });
+    const publisher = rankRecommendations({ ...input("2026-09-24"), seeds: [seeds[0]], candidates: [candidates[0]] });
+    expect(publisher[0].why).toEqual({ kind: "publisher", name: "House 0", sourceSeries: "Seed 0" });
+    const random = rankRecommendations({ ...input("2026-09-24"), seeds: [seeds[0]], candidates: [{ ...candidates[0], publisher: "Other" }] });
+    expect(random[0].why).toEqual({ kind: "random", name: "Other" });
+  });
 });

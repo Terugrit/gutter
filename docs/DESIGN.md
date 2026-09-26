@@ -108,13 +108,19 @@ Markup must match the preview's render functions. Key classes:
 - `.grid` of `.item` buttons: cover, hairline, series title, small line: `● Following` or the publisher. Clicking toggles selection (`aria-pressed`): 3px accent bottom border on the cover and a dark check square top-left.
 - When something is selected, a fixed centered `Dock` appears: `Follow <n> series` (primary) and `Clear`. Following clears the selection and shows a toast `Following <n> series`.
 - Empty search result: muted sentence "No series match that search."
+- M06: a "Reading, not following" strip before the grid uses `.sec` and `.strip`, with Follow and Dismiss under each cover. It hides when empty or filtering followed/attention.
 
 ### 5.4 Discover (`/discover`)
 - `h1.title` "Discover". Two sections, `Recommended for you` and `Something different`, each with a `Refresh` link button in the header and 10 `.drow` rows: number, (mobile only) 32px cover thumb, `Title / Publisher` with the reason below in muted 13px, and a `Follow` link button.
 - Desktop: hovering a row swaps the sticky right-hand preview cover and shows the title beneath it. Preview hidden on mobile.
+- M06: refreshed entries show a reason beneath the row title and desktop preview. Older cached entries without structured provenance show no new reason line.
+
+### 5.6 Reading recap (`/recap`, `/recap/[year]`)
+- The dashboard Reading header links here, not the nav. Existing `.page`, `.tools`, `.sec`, `.stats`, and `.row` markup frames year links, totals and top series. Twelve CSS `.recap-month` blocks show dated completed reads by month; the same markup works on mobile. Before sync or with no dated reads in the year, show one sentence and one link.
 
 ### 5.5 Settings (`/settings`)
 - `h1.title` "Settings"; section "Connections"; one `.srow` per service: name, URL (muted), `● Connected`, `Test` link button. Test shows `Testing…` then the result. The live version also shows `○ Not reachable` with the error on failure.
+- The Komga library section uses the existing `.tools` button style for **Scan library files**, separate from **Library sync** in Data and jobs. The scan button appears only after selecting a library; it reports Komga's acceptance, not completion. See the same section in `docs/design/preview.html`.
 
 ## 6. Responsive rules
 - Breakpoint 1024px: below it the split becomes one screen at a time, top links move to the tab bar, headlines switch to `clamp(2.4rem, 12.5cqw, 5rem)` with odd lines right-aligned and even lines left-aligned and no indents.

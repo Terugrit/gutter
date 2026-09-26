@@ -1,86 +1,187 @@
 # Gutter
 
-Self-hosted comic release tracking for a Komga library.
+[![Home Assistant app image](https://github.com/terugrit/gutter/actions/workflows/home-assistant-app.yaml/badge.svg)](https://github.com/terugrit/gutter/actions/workflows/home-assistant-app.yaml)
+[![Home Assistant](https://img.shields.io/badge/Home_Assistant-App-41BDF5)](https://www.home-assistant.io/)
+[![Platforms](https://img.shields.io/badge/platforms-amd64%20%7C%20aarch64-252422)](https://github.com/terugrit/gutter/pkgs/container/gutter)
 
-## First run
+> Self-hosted comic release tracking for your Komga library.
 
-1. Copy `.env.example` to `.env`, then set `KOMGA_URL`, `KOMGA_API_KEY`, and `APP_BASE_URL`. `KOMGA_URL` must be reachable from inside the Gutter container (for example `http://komga:25600` on a shared Docker network).
-2. Run `docker compose up -d --build`.
-3. Open `http://localhost:3000`, follow the first-run links to Settings, select your Komga library, then open Library to follow series. Check `http://localhost:3000/api/health` for the health status.
+## Highlights
 
-The SQLite database is stored in Docker's `gutter-data` volume at `/data/app.db`; it survives `docker compose down` and later `up` runs. To update, run `docker compose pull && docker compose up -d --build`.
+- Follow selected series from Komga without monitoring your entire library.
+- Match series and English-language issues against Metron, with ComicVine as a fallback.
+- Receive new-release, weekly-digest, job-failure, and recovery notifications through ntfy.
+- Find missing issues and send a volume to Kapowarr only when you choose to download it.
+- Track upcoming releases, changed release dates, collection progress, reading activity, and yearly recaps.
+- Discover recommendations based on your library without calling metadata services on every page load.
+- Run as a Home Assistant OS app or as a standalone Docker Compose service.
+- Keep application data in a persistent SQLite database with scheduled backups and portable follow exports.
 
-## Install on a phone
+## Overview
 
-Gutter has a web app manifest and temporary placeholder icons. Browsers offer a full install on HTTPS or localhost. On a plain HTTP LAN address, Android may only add a shortcut. Use an HTTPS reverse proxy for a full install. Gutter does not cache data offline.
+Gutter connects a Komga comic library to Metron, ComicVine, Kapowarr, and ntfy. It keeps a local cache of library and release data, schedules background synchronization jobs, and presents the results in a single web interface.
 
-Job failures send a high-priority ntfy warning after two consecutive failures. A successful run sends a recovery message. This watches scheduled and manual runs while the app is running; it cannot detect when the whole process is down.
+Gutter is designed for one user on a trusted home network. It does not include authentication, so do not expose it directly to the public internet. Use a trusted reverse proxy with authentication if remote access is required.
 
-## Discover recommendations
+### Integrations
 
-**Recommended for you** scores the existing local Discover pool against 3–5 Komga and followed series, then draws up to 10 weighted picks from the best 50. It favors shared publisher and similar publication years; genre, creator, character, and series type overlaps also count when those fields are already cached on both sides. Each row names the series and overlap behind its recommendation. Opening Discover makes no Metron request for recommendations. **Something different** keeps its separate pool refresh and cover checks.
+| Service | Purpose |
+| --- | --- |
+| [Komga](https://komga.org/) | Library, owned issues, reading progress, and covers |
+| [Metron](https://metron.cloud/) | Primary series metadata and English-language release data |
+| [ComicVine](https://comicvine.gamespot.com/api/) | Fallback ComicVine volume lookup for Kapowarr |
+| [Kapowarr](https://github.com/Casvt/Kapowarr) | Explicitly requested volume downloads and searches |
+| [ntfy](https://ntfy.sh/) | Release, digest, arrival, and job-status notifications |
 
-Recommendations stay fixed for a local calendar day (`TZ`). The Recommended refresh button shuffles them from local data, then checks issue art for up to 10 selected candidates through Metron's existing rate-limited cache. A midnight background job prepares the next day's covered picks; opening Discover itself makes no Metron request. Series in Komga, followed series, current Something different picks, and recommendations shown during the exclusion window are omitted. Show dates are saved in SQLite's `kv_cache` as `last_shown_at` entries.
+### Author
 
-The optional `RECOMMENDATION_SEED_COUNT` setting defaults to `5` (allowed: `3`–`5`). `RECOMMENDATION_EXCLUSION_DAYS` defaults to `14` (allowed: `1`–`90`). Keep five seeds if you want the full 10 rows: each seed can explain at most two picks. A thin pool or strict exclusions can produce fewer than 10 rows until the existing pool refresh adds suitable candidates.
+Gutter is maintained by [terugrit](https://github.com/terugrit).
 
-Discover and dashboard cards have **Follow** and **Download volume** actions. Download volume follows the series, uses its Metron `cv_id` when available, adds the volume to Kapowarr, and starts Kapowarr's search. ComicVine lookup is used only when Metron has no `cv_id`.
+## Usage
 
-## Windows development
+After starting Gutter:
 
-Gutter pins pnpm 9.15.4 in `package.json` and downloads Node 22.23.2 through `.npmrc`. Your globally installed Node version may differ; `pnpm node --version` shows the version Gutter uses. Use the Corepack command shim below to avoid PowerShell script-policy and competing pnpm installations.
+1. Open the web interface.
+2. Go to **Settings**, test the configured services, and select a Komga library.
+3. Open **Library** and follow the series you want Gutter to monitor.
+4. Review releases and collection status from the dashboard and individual series pages.
+5. Use **Download volume** when you want Kapowarr to add and search for a volume.
 
-```powershell
-cd C:\Users\alexa\Documents\Comics\Gutter
-$env:Path = 'C:\Program Files\nodejs;' + $env:Path
-& 'C:\Program Files\nodejs\pnpm.cmd' install
-& 'C:\Program Files\nodejs\pnpm.cmd' dev
+Gutter never starts a Kapowarr search merely because it detects a release. Downloads require an explicit action.
+
+[![Gutter dashboard](tests/visual/snapshots/desktop-dashboard.png)](tests/visual/snapshots/desktop-dashboard.png)
+
+The web interface can also be installed on a phone. A full progressive web app installation requires HTTPS or localhost; a plain HTTP LAN address may only create a browser shortcut. Gutter does not cache application data for offline use.
+
+## Installation
+
+### Home Assistant OS
+
+Gutter supports Home Assistant systems using `amd64` and `aarch64`.
+
+1. Open **Settings → Apps → App store** in Home Assistant.
+2. Open the repository menu and add:
+
+   ```text
+   https://github.com/terugrit/gutter
+   ```
+
+3. Find and install **Gutter**.
+4. Open the app's **Configuration** tab and enter the service URLs and credentials you use.
+5. Under **Network**, choose the host port for **Gutter web interface**. The default is `3000`.
+6. Set **Gutter public URL** to an address your phone can reach, including the selected port, such as `http://homeassistant.local:3000`.
+7. Start the app and select **Open Web UI**.
+
+Service URLs must be reachable from inside the app container. `localhost` refers to Gutter itself, not another Home Assistant app, container, or computer.
+
+Home Assistant stores the database and default backups in Gutter's persistent app data directory. The app uses a regular exposed port rather than Home Assistant Ingress so Next.js assets and notification links retain stable URLs.
+
+### Docker Compose
+
+Requirements:
+
+- Docker Engine with Docker Compose
+- Network access from the Gutter container to each configured service
+
+Clone the repository, create the environment file, and start the service:
+
+```bash
+git clone https://github.com/terugrit/gutter.git
+cd gutter
+cp .env.example .env
+docker compose up -d --build
 ```
 
-Open http://localhost:3000. Development data lives in `./data/app.db` without extra setup. The app upgrades that database when it opens it; `pnpm db:migrate` remains available for an explicit upgrade. `GUTTER_DB_PATH` can override that path; production still defaults to `/data/app.db`.
+Set at least `KOMGA_URL`, `KOMGA_API_KEY`, and `APP_BASE_URL` in `.env` before starting. Then open [http://localhost:3000](http://localhost:3000). The health endpoint is available at [http://localhost:3000/api/health](http://localhost:3000/api/health).
 
-Keep one development terminal open. Press Ctrl+C there to stop Gutter before restarting. `pnpm dev` now fails if port 3000 is occupied instead of silently switching ports. Development uses `.next-dev`, separate from production's `.next`. The visual suite runs on port 3001 with `.next-visual` and an isolated `data/visual-test.db`; it can run beside development. Never delete a build directory while its server is running.
+The SQLite database is stored at `/data/app.db` in the `gutter-data` Docker volume and survives container replacement. Update the installation with:
 
-Run `pnpm lint`, `pnpm typecheck`, and `pnpm test` to verify the project. Only proceed after installation succeeds.
+```bash
+git pull
+docker compose up -d --build
+```
 
-On Windows, standalone production packaging may fail with `EPERM ... symlink` if the account cannot create symbolic links. Local `pnpm dev` does not require that permission. The Dockerfile packages the standalone app inside Linux; Docker packaging has not yet been verified on this machine.
+## Configuration
 
-Settings shows the last successful job runs, failures, and cache freshness. Use **Run now** beside Library sync or Release refresh to retry a job after fixing a connection. Visual baselines for the current app live in 	ests/visual/snapshots/; the approved design references remain in docs/design/screenshots/.
+Home Assistant users configure these values from the app's Configuration tab. Docker Compose users set the corresponding uppercase names in `.env`.
 
+| Home Assistant option | Environment variable | Purpose |
+| --- | --- | --- |
+| Komga URL | `KOMGA_URL` | Komga base URL reachable from Gutter |
+| Komga API key | `KOMGA_API_KEY` | Komga authentication |
+| Metron username | `METRON_USER` | Metron authentication |
+| Metron password | `METRON_PASSWORD` | Metron authentication |
+| ComicVine API key | `COMICVINE_API_KEY` | Fallback volume lookup |
+| Kapowarr URL | `KAPOWARR_URL` | Kapowarr base URL reachable from Gutter |
+| Kapowarr API key | `KAPOWARR_API_KEY` | Kapowarr authentication |
+| ntfy URL | `NTFY_URL` | ntfy server URL; defaults to `https://ntfy.sh` |
+| ntfy topic | `NTFY_TOPIC` | Notification topic |
+| ntfy token | `NTFY_TOKEN` | Optional protected-topic token |
+| Notification action secret | `ACTION_SECRET` | Optional secret of at least 32 characters for ntfy actions |
+| Gutter public URL | `APP_BASE_URL` | Phone-reachable URL used in notification links |
+| Time zone | `TZ` | IANA time zone used for schedules and local dates |
+| Kapowarr check schedule | `KAPOWARR_CHECK_CRON` | Kapowarr status cron schedule |
+| Release check schedule | `RELEASE_CHECK_CRON` | Metron release cron schedule |
+| Weekly digest schedule | `WEEKLY_DIGEST_CRON` | Digest notification cron schedule |
+| Database backup schedule | `BACKUP_CRON` | SQLite backup cron schedule |
+| Backup directory | `BACKUP_DIR` | Optional backup destination |
+| Recommendation seed count | `RECOMMENDATION_SEED_COUNT` | Local recommendation seeds, from 3 to 5 |
+| Recommendation exclusion days | `RECOMMENDATION_EXCLUSION_DAYS` | Days before a recommendation can repeat, from 1 to 90 |
 
-## Database backups and follows transfer
+See [`.env.example`](.env.example) for defaults and examples. Schedule values use standard five-part cron expressions.
 
-Gutter creates an online SQLite backup nightly at 03:30 in `TZ`. Set
-`BACKUP_CRON` to change that schedule. `BACKUP_DIR` defaults to `backups/`
-next to the database (`/data/backups` in Docker). Settings → Data and jobs →
-Database backup → Run now runs the same tracked job. Failed backups use the
-existing job-failure alerts.
+## Data, backups, and transfers
 
-Files are named `gutter-YYYY-MM-DD.db`. A successful repeat on the same local
-day replaces that day's copy; the newest seven dated copies are retained.
-A failed copy never replaces a completed backup. Other filenames are untouched.
-The job uses the driver's online backup API, not a filesystem copy of the live
-WAL database: [better-sqlite3 backup documentation](https://github.com/WiseLibs/better-sqlite3/blob/master/docs/api.md#backupdestination-options---promise).
+Gutter creates an online SQLite backup every night at 03:30 in the configured time zone by default. It keeps the newest seven dated backups. Running the backup again on the same day safely replaces that day's completed backup.
 
-**The default backup directory is in the same volume as the database.** For
-protection against disk or volume loss, mount `BACKUP_DIR` on another disk or
-path. For example set `BACKUP_DIR=/backups` and add a bind mount
-`/mnt/other-disk/gutter:/backups` to the service's volumes. The app needs write
-permission there. To restore a full backup, stop Gutter, preserve the current
-DB and its `-wal`/`-shm` files elsewhere, place the chosen backup at the configured
-DB path without old sidecar files, and start Gutter again.
+The default backup directory is beside the live database at `/data/backups`. This protects against database mistakes, but not against losing the underlying disk or volume. Docker users can set `BACKUP_DIR=/backups` and bind-mount that path to another disk. Home Assistant users should include Gutter in regular Home Assistant backups.
 
-Settings → Follows has Download follows and Import follows. Version 1 JSON
-contains series names, service IDs, match/monitor choices, original follow dates,
-active flags, and skipped Metron issue IDs. It contains no credentials or
-notification history. Import validates the entire file before changing data,
-adds or reactivates included follows, and keeps other follows and existing
-notification history. Even entries exported as inactive are reactivated by import.
-Skipped choices are merged; importing does not clear existing skips. Discover
-sentinel IDs are retained. No Kapowarr download is triggered.
+To restore a full database backup:
 
-Matched imports refresh their cached issues and reapply Komga ownership. If
-Metron is unavailable, the result reports pending follows and retains their
-skip choices locally. Configure Metron and run Release refresh to retry, or
-import the same file again. Imports are limited to 5 MB. A follows export is
-portable configuration, not a replacement for the full database backup.
+1. Stop Gutter.
+2. Preserve the current database and its `-wal` and `-shm` sidecar files elsewhere.
+3. Place the selected backup at the configured database path without the old sidecar files.
+4. Start Gutter.
+
+The **Settings → Follows** section can export and import followed-series data as JSON. Exports include matching IDs, monitoring choices, original follow dates, and skipped issue IDs. They do not contain credentials or notification history and are not a replacement for a full database backup.
+
+## Feedback and contributing
+
+Bug reports and feature requests are welcome in [GitHub Issues](https://github.com/terugrit/gutter/issues). For significant changes, open an issue first so the approach and scope can be discussed before implementation.
+
+### Development
+
+Requirements:
+
+- Node.js 22
+- pnpm 9.15.4 through Corepack
+
+Install dependencies and start the development server:
+
+```bash
+corepack enable
+pnpm install
+pnpm dev
+```
+
+Open [http://localhost:3000](http://localhost:3000). Development data is stored in `./data/app.db`; schema upgrades run automatically when the application opens.
+
+Before submitting a change, run:
+
+```bash
+pnpm lint
+pnpm typecheck
+pnpm test
+```
+
+Visual changes should also pass:
+
+```bash
+pnpm test:visual
+```
+
+The visual suite uses port `3001`, `.next-visual`, and an isolated test database. On Windows, standalone production packaging may require Developer Mode or administrator privileges because Next.js creates symbolic links. Docker and GitHub Actions build the production package in Linux.
+
+### Publishing the Home Assistant app
+
+Before publishing an update, change the version in `gutter/config.yaml` and document it in `gutter/CHANGELOG.md`. Merging to `main` runs the Home Assistant app linter and publishes matching `amd64` and `aarch64` images to `ghcr.io/terugrit/gutter`. The GitHub Container Registry package must remain public so Home Assistant can install it.

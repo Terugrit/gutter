@@ -26,11 +26,13 @@ export async function getSelectedKomgaLibrary(): Promise<SelectedKomgaLibrary | 
 }
 export async function getSelectedKomgaLibraryId() { return (await getSelectedKomgaLibrary())?.id ?? null; }
 export async function saveSelectedKomgaLibrary(library: SelectedKomgaLibrary) {
+  const previous = await getSelectedKomgaLibraryId();
+  if (previous !== library.id) await db.delete(kvCache).where(eq(kvCache.key, `komga:ownership-baseline:${library.id}`));
   const fetchedAt = new Date().toISOString();
   await db.insert(kvCache).values({ key: "settings:komga-library", valueJson: JSON.stringify(library), fetchedAt, ttlSeconds: 365 * 24 * 60 * 60 }).onConflictDoUpdate({ target: kvCache.key, set: { valueJson: JSON.stringify(library), fetchedAt, ttlSeconds: 365 * 24 * 60 * 60 } });
 }
 export async function getOperations() {
-  const names = ["sync-komga", "refresh-releases", "weekly-digest", "refresh-discover", "backup-db"] as const;
+  const names = ["sync-komga", "scan-komga", "refresh-releases", "weekly-digest", "refresh-discover", "backup-db", "check-kapowarr"] as const;
   const statuses = await Promise.all(names.map(async (name) => {
     const row = (await db.select().from(kvCache).where(eq(kvCache.key, `job:${name}`)))[0];
     try { return [name, row ? JSON.parse(row.valueJson) : null] as const; } catch { return [name, null] as const; }

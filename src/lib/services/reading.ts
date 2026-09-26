@@ -6,15 +6,26 @@ export type ReadingStats = { booksRead: number; inProgress: number; seriesComple
 type CachedBook = { seriesId: string; readProgress?: { completed: boolean; readDate?: string | null } | null };
 
 export function readingStatsFromBooks(books: CachedBook[], today = new Date()): ReadingStats {
-  const completed = books.filter((book) => book.readProgress?.completed);
-  const inProgress = books.filter((book) => book.readProgress && !book.readProgress.completed);
-  const allSeries = new Set(books.map((book) => book.seriesId));
   const month = today.toISOString().slice(0, 7);
+  let booksRead = 0;
+  let inProgress = 0;
+  let readThisMonth = 0;
+  const seriesComplete = new Map<string, boolean>();
+  for (const book of books) {
+    const completed = Boolean(book.readProgress?.completed);
+    seriesComplete.set(book.seriesId, (seriesComplete.get(book.seriesId) ?? true) && completed);
+    if (completed) {
+      booksRead += 1;
+      if (book.readProgress?.readDate?.slice(0, 7) === month) readThisMonth += 1;
+    } else if (book.readProgress) {
+      inProgress += 1;
+    }
+  }
   return {
-    booksRead: completed.length,
-    inProgress: inProgress.length,
-    seriesCompleted: [...allSeries].filter((seriesId) => books.filter((book) => book.seriesId === seriesId).every((book) => book.readProgress?.completed)).length,
-    readThisMonth: completed.filter((book) => book.readProgress?.readDate?.slice(0, 7) === month).length,
+    booksRead,
+    inProgress,
+    seriesCompleted: [...seriesComplete.values()].filter(Boolean).length,
+    readThisMonth,
   };
 }
 

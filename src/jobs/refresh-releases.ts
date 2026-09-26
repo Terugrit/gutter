@@ -3,6 +3,7 @@ import { NtfyClient } from "@/clients/ntfy/client";
 import { db } from "@/db";
 import { followedSeries, issues, notifications } from "@/db/schema";
 import { env } from "@/env";
+import { notificationActions } from "@/lib/notification-actions";
 import { excludedIssue } from "@/lib/services/missing";
 import { refreshFollowedIssues } from "@/lib/services/metron";
 import { localDate, runTrackedJob } from "./status";
@@ -19,9 +20,11 @@ export async function sendRelease(release: Release) {
   const notification = (await db.select().from(notifications).where(eq(notifications.dedupeKey, key)))[0];
   if (!notification || notification.sentAt) return false;
   const client = ntfy();
-  if (!client || !env.APP_BASE_URL) { await db.update(notifications).set({ ntfyStatus: "Configure ntfy and APP_BASE_URL in .env" }).where(eq(notifications.id, notification.id)); return false; }
+  if (!client || !env.APP_BASE_URL) { await db.update(notifications).set({ ntfyStatus: "Configure ntfy and the public app URL in the deployment settings" }).where(eq(notifications.id, notification.id)); return false; }
   try {
-    await client.publish({ title: `New: ${release.seriesTitle} #${release.number}`, body: `${release.issueTitle ?? "Untitled issue"} / ${release.storeDate ?? "Date unknown"}`, click: `${env.APP_BASE_URL.replace(/\/$/, "")}/notifications/${notification.id}`, attach: release.coverUrl ?? undefined });
+    const follow = env.ACTION_SECRET ? (await db.select({ comicVineVolumeId: followedSeries.comicvineVolumeId, kapowarrVolumeId: followedSeries.kapowarrVolumeId }).from(issues).innerJoin(followedSeries, eq(issues.followedSeriesId, followedSeries.id)).where(eq(issues.id, release.issueId)))[0] : null;
+    const actions = notificationActions(notification.id, env.APP_BASE_URL, env.ACTION_SECRET, follow?.comicVineVolumeId ?? null, follow?.kapowarrVolumeId ?? null);
+    await client.publish({ title: `New: ${release.seriesTitle} #${release.number}`, body: `${release.issueTitle ?? "Untitled issue"} / ${release.storeDate ?? "Date unknown"}`, click: `${env.APP_BASE_URL.replace(/\/$/, "")}/notifications/${notification.id}`, attach: release.coverUrl ?? undefined, actions });
     await db.update(notifications).set({ sentAt: new Date().toISOString(), ntfyStatus: "sent" }).where(eq(notifications.id, notification.id));
     return true;
   } catch (error) {

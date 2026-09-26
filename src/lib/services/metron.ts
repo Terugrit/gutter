@@ -6,7 +6,7 @@ import { db } from "@/db";
 import { followedSeries, issues, kvCache } from "@/db/schema";
 import { env } from "@/env";
 import { enqueueRateLimited } from "@/lib/rate-limit-queue";
-import { rankMetronCandidates } from "@/lib/matching/metron";
+import { matchSearchTitle, rankMetronCandidates } from "@/lib/matching/metron";
 import { applyKomgaOwnership } from "@/lib/services/library";
 
 import { normalizeSeriesStatus } from "./series-progress";
@@ -35,6 +35,48 @@ function client() {
 }
 function comicVineClient() { return env.COMICVINE_API_KEY ? new ComicVineClient({ apiKey: env.COMICVINE_API_KEY }) : null; }
 function normalise(value: string) { return value.toLocaleLowerCase().replace(/[^a-z0-9]/g, ""); }
+// ComicInfo.xml's Web tag is imported per book. Tagged issues use 4000-, volumes use 4050-.
+// Scan metadata rather than depending on an undocumented Komga field path.
+const COMICVINE_URL_PATTERN = /comicvine\.gamespot\.com\/[^"'\s]*?\/(\d{2,5})-(\d+)\/?/;
+const COMICVINE_ISSUE_PREFIX = "4000";
+const COMICVINE_VOLUME_PREFIX = "4050";
+function findComicVineUrl(value: unknown, depth = 0): string | null {
+  if (depth > 4 || value == null) return null;
+  if (typeof value === "string") return COMICVINE_URL_PATTERN.test(value) ? value : null;
+  if (Array.isArray(value)) {
+    for (const item of value) { const found = findComicVineUrl(item, depth + 1); if (found) return found; }
+    return null;
+  }
+  if (typeof value === "object") {
+    for (const item of Object.values(value as Record<string, unknown>)) { const found = findComicVineUrl(item, depth + 1); if (found) return found; }
+  }
+  return null;
+}
+async function resolveKomgaEmbeddedComicVineId(komgaSeriesId: string): Promise<number | null> {
+  const key = cacheKey("komga:cvlink", komgaSeriesId);
+  const hit = await cached<number>(key);
+  if (hit !== null) return hit || null;
+  const row = (await db.select().from(kvCache).where(eq(kvCache.key, "komga:books")))[0];
+  let books: { seriesId: string; metadata?: Record<string, unknown> }[] = [];
+  if (row) { try { books = JSON.parse(row.valueJson); } catch { books = []; } }
+  let resolved: number | null = null;
+  for (const book of books) {
+    if (book.seriesId !== komgaSeriesId) continue;
+    const url = findComicVineUrl(book.metadata);
+    const match = url?.match(COMICVINE_URL_PATTERN);
+    if (!match) continue;
+    const [, prefix, id] = match;
+    if (prefix === COMICVINE_VOLUME_PREFIX) { resolved = Number(id); break; }
+    if (prefix === COMICVINE_ISSUE_PREFIX) {
+      const cv = comicVineClient();
+      if (!cv) continue;
+      const volumeId = await enqueueRateLimited(() => cv.getIssueVolumeId(Number(id)));
+      if (volumeId) { resolved = volumeId; break; }
+    }
+  }
+  await saveCache(key, resolved ?? 0, COMICVINE_TTL_SECONDS);
+  return resolved;
+}
 async function resolveComicVineId(series: MetronSeries): Promise<number | null> {
   if (series.cv_id) return series.cv_id;
   const key = cacheKey("comicvine:volume", { title: series.series, publisher: series.publisher?.name, year: series.year_began });
@@ -107,10 +149,11 @@ export async function candidatesForSeries(input: { title: string; publisher?: st
     return exact ? [{ ...exact, score: 100 }] : [];
   }
   const comicVineId = numericMetadata(input.metadata, ["comicvineId", "comicVineId", "comic_vine_id", "cvId", "cv_id"]);
+  const title = matchSearchTitle(input.title);
   const candidates = comicVineId
     ? await searchMetronSeries({ comicVineId })
-    : await searchMetronSeries({ name: input.title, publisher: input.publisher ?? undefined, year: input.year ?? undefined });
-  return comicVineId ? candidates.map((candidate) => ({ ...candidate, score: 100 })) : rankMetronCandidates(candidates, input);
+    : await searchMetronSeries({ name: title, publisher: input.publisher ?? undefined });
+  return comicVineId ? candidates.map((candidate) => ({ ...candidate, score: 100 })) : rankMetronCandidates(candidates, { ...input, title });
 }
 async function sourceForFollow(komgaSeriesId: string) {
   const row = (await db.select().from(kvCache).where(eq(kvCache.key, "komga:series")))[0];
@@ -121,7 +164,7 @@ function yearFromMetadata(metadata?: Record<string, unknown>) {
   const value = metadata?.year ?? metadata?.yearBegan ?? metadata?.year_began;
   return typeof value === "number" && Number.isInteger(value) ? value : typeof value === "string" && /^\d{4}$/.test(value) ? Number(value) : null;
 }
-export async function cacheIssues(followedSeriesId: number, metronSeriesId: number, force = false) {
+export async function cacheIssues(followedSeriesId: number, metronSeriesId: number, force = false, includeDetails = true) {
   const key = `metron:issues:${metronSeriesId}`;
   let result = await cached<MetronIssue[]>(key);
   if (!result || force) {
@@ -134,19 +177,34 @@ export async function cacheIssues(followedSeriesId: number, metronSeriesId: numb
   await db.update(followedSeries).set({ seriesStatus: normalizeSeriesStatus(metadata?.status) }).where(eq(followedSeries.id, followedSeriesId));
   const now = new Date().toISOString();
   const follow = (await db.select({ createdAt: followedSeries.createdAt, monitorMode: followedSeries.monitorMode }).from(followedSeries).where(eq(followedSeries.id, followedSeriesId)))[0];
+  const existingByMetronId = new Map<number, { followedSeriesId: number; description: string | null; creditsJson: string | null; storeDate: string | null; owned: boolean }>();
+  // SQLite has a finite number of bind parameters. Chunking keeps large, long-running
+  // series safe while replacing one lookup per issue with a few indexed lookups.
+  for (let start = 0; start < result.length; start += 900) {
+    const ids = result.slice(start, start + 900).map((issue) => issue.id);
+    const existing = await db.select({ metronIssueId: issues.metronIssueId, followedSeriesId: issues.followedSeriesId, description: issues.description, creditsJson: issues.creditsJson, storeDate: issues.storeDate, owned: issues.owned }).from(issues).where(inArray(issues.metronIssueId, ids));
+    for (const issue of existing) existingByMetronId.set(issue.metronIssueId, issue);
+  }
+  const writes: Array<{ metronIssueId: number; followedSeriesId: number; number: string; title: string | null; storeDate: string | null; coverUrl: string | null; description: string | null; creditsJson: string | null; active: true; updatedAt: string; previousDate?: string; dateChangedAt?: number }> = [];
   for (const listedIssue of result) {
-    const existing = (await db.select({ followedSeriesId: issues.followedSeriesId, description: issues.description, creditsJson: issues.creditsJson, storeDate: issues.storeDate, owned: issues.owned }).from(issues).where(eq(issues.metronIssueId, listedIssue.id)))[0];
+    const existing = existingByMetronId.get(listedIssue.id);
     if (existing && existing.followedSeriesId !== followedSeriesId) continue;
     const relevant = follow?.monitorMode === "all" || !listedIssue.store_date || listedIssue.store_date >= (follow?.createdAt.slice(0, 10) ?? "");
-    const detail = relevant && (!existing?.description || !existing.creditsJson) ? await getMetronIssue(listedIssue.id) : null;
+    const detail = includeDetails && relevant && (!existing?.description || !existing.creditsJson) ? await getMetronIssue(listedIssue.id) : null;
     const issue = detail ?? listedIssue;
     // The freshly fetched issue list owns the date; a cached detail may still carry yesterday's value.
     const nextDate = listedIssue.store_date !== undefined ? listedIssue.store_date : detail?.store_date ?? null;
     const moved = existing && !existing.owned && existing.storeDate && nextDate && existing.storeDate !== nextDate;
-    const dateChange = moved ? { previousDate: existing.storeDate, dateChangedAt: Date.now() } : {};
-    await db.insert(issues).values({ metronIssueId: issue.id, followedSeriesId, number: issue.number, title: issue.issue ?? null, storeDate: nextDate, coverUrl: issue.image ?? null, description: issue.desc ?? existing?.description ?? null, creditsJson: issue.credits ? JSON.stringify(issue.credits) : existing?.creditsJson ?? null, active: true, updatedAt: now, ...dateChange }).onConflictDoUpdate({ target: issues.metronIssueId, set: { number: issue.number, title: issue.issue ?? null, storeDate: nextDate, coverUrl: issue.image ?? null, description: issue.desc ?? existing?.description ?? null, creditsJson: issue.credits ? JSON.stringify(issue.credits) : existing?.creditsJson ?? null, active: true, updatedAt: now, ...dateChange } });
-    applyImportedSkips(followedSeriesId);
+    const dateChange = moved ? { previousDate: existing.storeDate!, dateChangedAt: Date.now() } : {};
+    writes.push({ metronIssueId: issue.id, followedSeriesId, number: issue.number, title: issue.issue ?? null, storeDate: nextDate, coverUrl: issue.image ?? null, description: issue.desc ?? existing?.description ?? null, creditsJson: issue.credits ? JSON.stringify(issue.credits) : existing?.creditsJson ?? null, active: true, updatedAt: now, ...dateChange });
   }
+  db.transaction((tx) => {
+    for (const issue of writes) {
+      const { previousDate, dateChangedAt } = issue;
+      const dateChange = previousDate ? { previousDate, dateChangedAt } : {};
+      tx.insert(issues).values(issue).onConflictDoUpdate({ target: issues.metronIssueId, set: { number: issue.number, title: issue.title, storeDate: issue.storeDate, coverUrl: issue.coverUrl, description: issue.description, creditsJson: issue.creditsJson, active: true, updatedAt: now, ...dateChange } }).run();
+    }
+  });
   applyImportedSkips(followedSeriesId);
   return true;
 }
@@ -181,7 +239,9 @@ export async function autoMatchFollowedSeries(komgaSeriesId: string) {
   const follow = (await db.select().from(followedSeries).where(eq(followedSeries.komgaSeriesId, komgaSeriesId)))[0];
   if (!follow) return null;
   const source = await sourceForFollow(komgaSeriesId);
-  const candidates = await candidatesForSeries({ title: follow.title, publisher: follow.publisher, year: yearFromMetadata(source?.metadata), metadata: source?.metadata });
+  const embeddedComicVineId = await resolveKomgaEmbeddedComicVineId(komgaSeriesId);
+  const metadata = embeddedComicVineId ? { ...source?.metadata, comicvineId: embeddedComicVineId } : source?.metadata;
+  const candidates = await candidatesForSeries({ title: follow.title, publisher: follow.publisher, year: yearFromMetadata(source?.metadata), metadata });
   const best = candidates[0];
   if (!best || (best.score ?? 0) < 90) {
     await db.update(issues).set({ active: false }).where(eq(issues.followedSeriesId, follow.id));
@@ -197,11 +257,12 @@ export async function autoMatchFollowedSeries(komgaSeriesId: string) {
 export async function confirmMatch(komgaSeriesId: string, metronSeriesId: number) {
   const follow = (await db.select().from(followedSeries).where(eq(followedSeries.komgaSeriesId, komgaSeriesId)))[0];
   if (!follow) throw new Error("Followed series not found");
-  const selected = (await searchMetronSeries({ name: follow.title })).find((item) => item.id === metronSeriesId) ?? await getMetronSeries(metronSeriesId);
+  const selected = await getMetronSeries(metronSeriesId);
   if (!selected) throw new Error("Metron series not found");
   if (follow.metronSeriesId !== selected.id) await db.update(issues).set({ active: false }).where(eq(issues.followedSeriesId, follow.id));
   await db.update(followedSeries).set({ matchStatus: "confirmed", seriesStatus: null, metronSeriesId: selected.id, comicvineVolumeId: await resolveComicVineId(selected) }).where(and(eq(followedSeries.id, follow.id), eq(followedSeries.komgaSeriesId, komgaSeriesId)));
-  await cacheIssues(follow.id, selected.id);
+  // List data is enough to show issues immediately; the scheduled release refresh hydrates details.
+  await cacheIssues(follow.id, selected.id, false, false);
   await applyKomgaOwnership();
   return selected;
 }

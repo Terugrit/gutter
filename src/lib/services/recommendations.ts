@@ -5,12 +5,15 @@ import { env } from "@/env";
 import { sampleMetronSeriesPages, previewMetronIssues } from "@/lib/services/metron";
 import { localDate, runTrackedJob } from "@/jobs/status";
 import { normalizedTitle, rankRecommendations, yearInTitle, type RecommendationSeed } from "@/lib/recommendation-ranking";
+import { z } from "zod";
 
-export type Recommendation = { id: number; title: string; publisher: string; reason: string; coverUrl: string; seedId?: string; overlaps?: string[]; score?: number };
+export const recommendationSchema = z.object({ id: z.number(), title: z.string(), publisher: z.string(), coverUrl: z.string(), reason: z.string(), why: z.object({ kind: z.enum(["writer", "publisher", "random"]), name: z.string(), sourceSeries: z.string().optional() }).optional(), seedId: z.string().optional(), overlaps: z.array(z.string()).optional(), score: z.number().optional() });
+export const recommendationSetsSchema = z.object({ recommended: z.array(recommendationSchema), different: z.array(recommendationSchema) });
+export type Recommendation = z.infer<typeof recommendationSchema>;
 export type RecommendationSets = { recommended: Recommendation[]; different: Recommendation[] };
-type KomgaSeries = { id: string; t: string; pub: string; metadata?: { genres?: string[] } };
+type KomgaSeries = { id: string; t: string; pub: string; metadata?: { genres?: string[]; authors?: { name: string; role?: string }[] } };
 type KomgaBook = { seriesId: string; metadata?: { releaseDate?: string } };
-type PoolEntry = { id: number; title: string; publisher: string; checked: boolean; coverUrl: string | null; yearBegan?: number | null; issueCount?: number | null };
+type PoolEntry = { id: number; title: string; publisher: string; checked: boolean; coverUrl: string | null; yearBegan?: number | null; issueCount?: number | null; writers?: string[] };
 type DiscoverPool = { entries: PoolEntry[]; shownIds: number[] };
 const KEY = "discover:recommendations";
 const POOL_KEY = "discover:pool";
@@ -39,8 +42,9 @@ async function savePool(value: DiscoverPool) {
   await db.insert(kvCache).values({ key: POOL_KEY, valueJson: JSON.stringify(value), fetchedAt: now, ttlSeconds: 30 * 24 * 60 * 60 }).onConflictDoUpdate({ target: kvCache.key, set: { valueJson: JSON.stringify(value), fetchedAt: now } });
 }
 export async function getRecommendations(): Promise<RecommendationSets> {
-  let sets = (await cache<RecommendationSets>(KEY)) ?? { recommended: [], different: [] };
-  if (process.env.GUTTER_VISUAL_TEST !== "1") sets = await updateRecommended(sets, false);
+  // Page renders must not replace covered picks with unchecked pool candidates.
+  // The midnight/startup/explicit refresh prepares and saves the next covered set.
+  const sets = recommendationSetsSchema.safeParse(await cache<unknown>(KEY)).data ?? { recommended: [], different: [] };
   const [dismissed, follows, library] = await Promise.all([dismissedIds(), db.select().from(followedSeries).where(eq(followedSeries.active, true)), cache<KomgaSeries[]>("komga:series")]);
   const ids = new Set([...dismissed, ...follows.map((item) => item.metronSeriesId).filter((id): id is number => id !== null)]);
   const titles = new Set([...(library ?? []).map((item) => normalizedTitle(item.t)), ...follows.map((item) => normalizedTitle(item.title))]);
@@ -67,10 +71,9 @@ async function refillPool(previous: DiscoverPool): Promise<DiscoverPool> {
   const ids = new Set(kept.map((entry) => entry.id));
   return { entries: kept, shownIds: previous.shownIds.filter((id) => ids.has(id)) };
 }
-async function updateRecommended(sets: RecommendationSets, manual: boolean, fetchCovers = false): Promise<RecommendationSets> {
+async function updateRecommended(sets: RecommendationSets): Promise<RecommendationSets> {
   const day = localDate();
   const state = await cache<{ day: string; sequence: number }>(DAY_KEY);
-  if (!manual && state?.day === day) return sets;
   const [pool, library, books, follows, dismissed, priorHistory] = await Promise.all([
     cache<DiscoverPool>(POOL_KEY), cache<KomgaSeries[]>("komga:series"), cache<KomgaBook[]>("komga:books"),
     db.select().from(followedSeries).where(eq(followedSeries.active, true)), dismissedIds(),
@@ -87,16 +90,16 @@ async function updateRecommended(sets: RecommendationSets, manual: boolean, fetc
   }
   const followedIds = new Set(follows.map((item) => item.komgaSeriesId));
   const seeds: RecommendationSeed[] = [
-    ...library.map((item) => ({ id: `komga:${item.id}`, title: item.t, publisher: item.pub, year: years.get(item.id) ?? yearInTitle(item.t), genres: item.metadata?.genres, followed: followedIds.has(item.id) })),
+    ...library.map((item) => ({ id: `komga:${item.id}`, title: item.t, publisher: item.pub, year: years.get(item.id) ?? yearInTitle(item.t), genres: item.metadata?.genres, writers: item.metadata?.authors?.filter((author) => author.role?.toLowerCase() === "writer").map((author) => author.name), followed: followedIds.has(item.id) })),
     ...follows.map((item) => ({ id: `follow:${item.id}`, title: item.title, publisher: item.publisher ?? "Unknown publisher", year: years.get(item.komgaSeriesId) ?? yearInTitle(item.title), followed: true })),
   ];
   const excludedIds = new Set([...dismissed, ...follows.map((item) => item.metronSeriesId).filter((id): id is number => id !== null), ...sets.different.map((item) => item.id)]);
   const excludedTitles = new Set([...library.map((item) => normalizedTitle(item.t)), ...follows.map((item) => normalizedTitle(item.title)), ...sets.different.map((item) => normalizedTitle(item.title))]);
-  const sequence = manual && state?.day === day ? state.sequence + 1 : 0;
+  const sequence = state?.day === day ? state.sequence + 1 : 0;
   const rankingInput = {
     day,
     seeds,
-    candidates: pool.entries.filter((item) => item.issueCount !== 0 && (!item.checked || item.coverUrl)).map((item) => ({ id: item.id, title: item.title, publisher: item.publisher, yearBegan: item.yearBegan ?? yearInTitle(item.title), coverUrl: item.coverUrl ?? "" })),
+    candidates: pool.entries.filter((item) => item.issueCount !== 0 && (!item.checked || item.coverUrl)).map((item) => ({ id: item.id, title: item.title, publisher: item.publisher, yearBegan: item.yearBegan ?? yearInTitle(item.title), writers: item.writers, coverUrl: item.coverUrl ?? "" })),
     excludedIds, excludedTitles,
     lastShownAt: Object.fromEntries(Object.entries(history).map(([id, item]) => [id, item.last_shown_at])),
     now, exclusionDays: env.RECOMMENDATION_EXCLUSION_DAYS, seedCount: env.RECOMMENDATION_SEED_COUNT,
@@ -107,7 +110,7 @@ async function updateRecommended(sets: RecommendationSets, manual: boolean, fetc
     if (picks.length > recommended.length) recommended = picks;
     if (recommended.length === 10) break;
   }
-  if (fetchCovers) {
+  {
     const entries = new Map(pool.entries.map((entry) => [entry.id, entry]));
     let previews = 0;
     for (const item of recommended) {
@@ -122,6 +125,9 @@ async function updateRecommended(sets: RecommendationSets, manual: boolean, fetc
     }
     if (previews) await savePool(pool);
   }
+  const covered = recommended.filter((item) => item.coverUrl);
+  if (!covered.length && sets.recommended.some((item) => item.coverUrl)) return sets;
+  recommended = covered;
   for (const item of recommended) history[String(item.id)] = { last_shown_at: now.toISOString() };
   const result = { recommended, different: sets.different };
   await save(result);
@@ -134,12 +140,13 @@ export type DiscoverScope = "recommended" | "different" | "all";
 export async function refreshDiscover(scope: DiscoverScope = "all"): Promise<RecommendationSets> { const result = await runTrackedJob("refresh-discover", () => buildDiscover(scope)); if (!result) throw new Error("Discover refresh is already running"); return getRecommendations(); }
 export async function initializeDiscover() {
   const state = await cache<{ day: string }>(DAY_KEY);
-  if (!(await cache<RecommendationSets>(KEY))) await refreshDiscover();
-  else if (state?.day !== localDate()) await refreshDiscover("recommended");
+  const existing = recommendationSetsSchema.safeParse(await cache<unknown>(KEY)).data;
+  if (!existing) await refreshDiscover();
+  else if (state?.day !== localDate() || (env.METRON_USER && env.METRON_PASSWORD && existing.recommended.length > 0 && existing.recommended.every((item) => !item.coverUrl))) await refreshDiscover("recommended");
 }
 async function buildDiscover(scope: DiscoverScope): Promise<RecommendationSets> {
   const previous = (await cache<RecommendationSets>(KEY)) ?? { recommended: [], different: [] };
-  if (scope === "recommended") return updateRecommended(previous, true, true);
+  if (scope === "recommended") return updateRecommended(previous);
   const deadline = Date.now() + MAX_REFRESH_MS;
   if (!env.METRON_USER || !env.METRON_PASSWORD) throw new Error("Metron is not configured");
   const [seriesCache, follows] = await Promise.all([cache<KomgaSeries[]>("komga:series"), db.select().from(followedSeries).where(eq(followedSeries.active, true))]);
@@ -177,7 +184,7 @@ async function buildDiscover(scope: DiscoverScope): Promise<RecommendationSets> 
         entry.checked = true;
       }
       if (!entry.coverUrl) continue;
-      different.push({ id: entry.id, title: entry.title, publisher: entry.publisher, reason: "Picked at random", coverUrl: entry.coverUrl });
+       different.push({ id: entry.id, title: entry.title, publisher: entry.publisher, reason: "Picked at random", why: { kind: "random", name: entry.publisher }, coverUrl: entry.coverUrl });
       publisherCounts.set(entry.publisher, (publisherCounts.get(entry.publisher) ?? 0) + 1);
       usedTitles.add(normalizedTitle(entry.title));
       shown.add(entry.id);
@@ -193,7 +200,7 @@ async function buildDiscover(scope: DiscoverScope): Promise<RecommendationSets> 
   }
   const result = { recommended, different };
   await save(result);
-  return scope === "all" ? updateRecommended(result, true, true) : result;
+  return scope === "all" ? updateRecommended(result) : result;
 }
 
 

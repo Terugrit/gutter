@@ -1,0 +1,105 @@
+name: Home Assistant app image
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint-app:
+    name: Validate Home Assistant app
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7.0.1
+
+      - name: Run Home Assistant app linter
+        uses: frenck/action-addon-linter@v2.21
+        with:
+          path: ./gutter
+
+  prepare:
+    name: Prepare image matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7.0.1
+
+      - name: Read app version
+        id: version
+        shell: bash
+        run: >-
+          echo "version=$(sed -n 's/^version: \"\(.*\)\"/\1/p' gutter/config.yaml)" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare multi-architecture matrix
+        id: matrix
+        uses: home-assistant/builder/actions/prepare-multi-arch-matrix@2026.09.0
+        with:
+          architectures: '["amd64", "aarch64"]'
+          image-name: gutter
+          registry-prefix: ghcr.io/terugrit
+
+  build:
+    name: Build ${{ matrix.arch }} image
+    needs:
+      - lint-app
+      - prepare
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7.0.1
+
+      - name: Build image
+        uses: home-assistant/builder/actions/build-image@2026.09.0
+        with:
+          arch: ${{ matrix.arch }}
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+          context: .
+          image: ${{ matrix.image }}
+          image-tags: |
+            ${{ needs.prepare.outputs.version }}
+            latest
+          labels: |
+            io.hass.type=app
+            io.hass.name=Gutter
+            io.hass.description=Self-hosted comic release tracker
+            io.hass.url=https://github.com/terugrit/gutter
+          push: ${{ github.event_name != 'pull_request' }}
+          version: ${{ needs.prepare.outputs.version }}
+
+  manifest:
+    name: Publish multi-architecture image
+    needs:
+      - prepare
+      - build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      packages: write
+    steps:
+      - name: Publish manifest
+        uses: home-assistant/builder/actions/publish-multi-arch-manifest@2026.09.0
+        with:
+          architectures: '["amd64", "aarch64"]'
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+          image-name: gutter
+          image-tags: |
+            ${{ needs.prepare.outputs.version }}
+            latest
+          registry-prefix: ghcr.io/terugrit

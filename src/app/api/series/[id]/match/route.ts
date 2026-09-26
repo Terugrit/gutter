@@ -16,6 +16,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (parsed.data.metronSeriesId) return NextResponse.json({ selected: await confirmMatch(id, parsed.data.metronSeriesId) });
     const candidates = await candidatesForSeries({ title: parsed.data.query ?? follow.title, publisher: follow.publisher });
     return NextResponse.json({ candidates: candidates.map(({ score: _score, ...candidate }) => candidate) });
-  } catch { return NextResponse.json({ error: "Metron is not reachable. Check its credentials in .env." }, { status: 502 }); }
+  } catch { return NextResponse.json({ error: "Metron is not reachable. Check its credentials in the deployment settings." }, { status: 502 }); }
 }
 

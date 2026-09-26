@@ -1,0 +1,50 @@
+name: Gutter
+version: "0.1.0"
+slug: gutter
+description: Follow comic releases from Komga and send missing issues to Kapowarr
+url: https://github.com/terugrit/gutter
+image: ghcr.io/terugrit/gutter
+stage: experimental
+startup: application
+boot: auto
+init: false
+backup: cold
+arch:
+  - aarch64
+  - amd64
+ports:
+  3000/tcp: 3000
+ports_description:
+  3000/tcp: Gutter web interface
+webui: http://[HOST]:[PORT:3000]
+watchdog: http://[HOST]:[PORT:3000]/api/health
+options:
+  ntfy_url: https://ntfy.sh
+  kapowarr_check_cron: "*/15 * * * *"
+  weekly_digest_cron: "0 9 * * 3"
+  release_check_cron: "0 */6 * * *"
+  timezone: UTC
+  recommendation_seed_count: 5
+  recommendation_exclusion_days: 14
+  backup_cron: "30 3 * * *"
+schema:
+  komga_url: "url?"
+  komga_api_key: "password?"
+  metron_user: "str?"
+  metron_password: "password?"
+  comicvine_api_key: "password?"
+  kapowarr_url: "url?"
+  kapowarr_api_key: "password?"
+  kapowarr_check_cron: str
+  ntfy_url: url
+  ntfy_topic: "match(^[-_A-Za-z0-9]{1,64}$)?"
+  ntfy_token: "password?"
+  action_secret: "password?"
+  app_base_url: "url?"
+  weekly_digest_cron: str
+  release_check_cron: str
+  timezone: str
+  recommendation_seed_count: "int(3,5)"
+  recommendation_exclusion_days: "int(1,90)"
+  backup_cron: str
+  backup_dir: "str?"

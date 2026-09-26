@@ -14,4 +14,10 @@ export const comicVineResponseSchema = z.object({
   results: z.array(comicVineVolumeSchema),
 }).passthrough();
 
+export const comicVineIssueResponseSchema = z.object({
+  status_code: z.number().int(),
+  error: z.string(),
+  results: z.object({ id: z.number().int(), volume: z.object({ id: z.number().int() }).nullable().optional() }).nullable(),
+}).passthrough();
+
 export type ComicVineVolume = z.infer<typeof comicVineVolumeSchema>;

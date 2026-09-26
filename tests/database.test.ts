@@ -155,25 +155,28 @@ describe("database-backed workflows", () => {
     const saved = database.sqlite.prepare("SELECT value_json FROM kv_cache WHERE key='discover:pool'").get() as { value_json: string };
     expect(JSON.parse(saved.value_json).entries.length).toBeGreaterThan(10);
   });
-  it("builds daily Recommended picks locally and records when they were shown", async () => {
+  it("keeps covered picks on page loads and prepares the next covered set only on refresh", async () => {
     await database.db.update(schema.followedSeries).set({ active: false });
     const put = async (key: string, value: unknown) => database.db.insert(schema.kvCache).values({ key, valueJson: JSON.stringify(value), fetchedAt: new Date().toISOString(), ttlSeconds: 3600 }).onConflictDoUpdate({ target: schema.kvCache.key, set: { valueJson: JSON.stringify(value) } });
     await put("komga:series", Array.from({ length: 5 }, (_, index) => ({ id: `seed-${index}`, t: `Seed ${index}`, pub: `House ${index}` })));
     await put("komga:books", Array.from({ length: 5 }, (_, index) => ({ seriesId: `seed-${index}`, metadata: { releaseDate: "2020-01-01" } })));
     await put("discover:pool", { entries: Array.from({ length: 100 }, (_, index) => ({ id: index + 1000, title: `${index < 50 ? "A" : "Z"} Series ${index}`, publisher: `House ${index % 5}`, yearBegan: 2020, issueCount: 1, checked: false, coverUrl: null })), shownIds: [] });
-    await put("discover:recommendations", { recommended: [], different: [{ id: 1000, title: "A Series 0", publisher: "House 0", reason: "Picked at random", coverUrl: "" }] });
+    await put("discover:recommendations", { recommended: [{ id: 9999, title: "Previous pick", publisher: "House 0", reason: "Same publisher as Seed 0", coverUrl: "https://example.test/old.jpg" }], different: [{ id: 1000, title: "A Series 0", publisher: "House 0", reason: "Picked at random", coverUrl: "" }] });
     await database.db.delete(schema.kvCache).where(eq(schema.kvCache.key, "discover:recommended-day"));
     await database.db.delete(schema.kvCache).where(eq(schema.kvCache.key, "discover:recommended-history"));
     let metronCalls = 0;
     server.use(http.get("https://metron.cloud/api/*", () => { metronCalls += 1; return HttpResponse.json({ count: 0, next: null, results: [] }); }));
     const first = await recommendations.getRecommendations();
     const second = await recommendations.getRecommendations();
-    expect(first.recommended).toHaveLength(10);
-    expect(second.recommended.map((item) => item.id)).toEqual(first.recommended.map((item) => item.id));
-    expect(first.recommended.every((item) => item.id !== 1000 && item.reason.includes("Seed"))).toBe(true);
+    expect(first.recommended.map((item) => item.coverUrl)).toEqual(["https://example.test/old.jpg"]);
+    expect(second.recommended).toEqual(first.recommended);
     expect(metronCalls).toBe(0);
-    const history = database.sqlite.prepare("SELECT value_json FROM kv_cache WHERE key='discover:recommended-history'").get() as { value_json: string };
-    for (const item of first.recommended) expect(JSON.parse(history.value_json)[item.id].last_shown_at).toBeTruthy();
+    expect(database.sqlite.prepare("SELECT key FROM kv_cache WHERE key='discover:recommended-day'").get()).toBeUndefined();
+    server.use(http.get("https://metron.cloud/api/series/:id/issue_list/", () => HttpResponse.json({ count: 0, next: null, results: [] })));
+    const unavailable = await recommendations.refreshDiscover("recommended");
+    expect(unavailable.recommended.map((item) => item.coverUrl)).toEqual(["https://example.test/old.jpg"]);
+    expect(database.sqlite.prepare("SELECT key FROM kv_cache WHERE key='discover:recommended-day'").get()).toBeUndefined();
+    database.sqlite.prepare("DELETE FROM kv_cache WHERE key LIKE 'metron:issue-preview:%'").run(); // simulate expiry before a later retry
     let previews = 0;
     server.use(http.get("https://metron.cloud/api/series/:id/issue_list/", ({ params }) => {
       previews += 1;
@@ -183,9 +186,11 @@ describe("database-backed workflows", () => {
     expect(refreshed.recommended).toHaveLength(10);
     expect(refreshed.recommended.every((item) => item.coverUrl.startsWith("https://example.test/covers/"))).toBe(true);
     expect(previews).toBeLessThanOrEqual(10);
+    const history = database.sqlite.prepare("SELECT value_json FROM kv_cache WHERE key='discover:recommended-history'").get() as { value_json: string };
+    for (const item of refreshed.recommended) expect(JSON.parse(history.value_json)[item.id].last_shown_at).toBeTruthy();
     const savedPool = database.sqlite.prepare("SELECT value_json FROM kv_cache WHERE key='discover:pool'").get() as { value_json: string };
     expect(JSON.parse(savedPool.value_json).entries.filter((item: { coverUrl: string | null }) => item.coverUrl).length).toBeGreaterThanOrEqual(10);
-  });
+  }, 15_000);
   it("sends a discovered volume to Kapowarr using Metron's ComicVine ID", async () => {
     const picked = (await recommendations.getRecommendations()).recommended[0];
     expect(picked).toBeTruthy();
@@ -221,7 +226,7 @@ describe("database-backed workflows", () => {
     expect(follow.comicvineVolumeId).toBe(424242);
     expect(follow.kapowarrVolumeId).toBe(9);
     expect(added).toBe(1);
-    expect(searches).toBe(2);
+    expect(searches).toBe(1);
     expect(comicVineLookups).toBe(0);
   });
 });

@@ -8,6 +8,7 @@ export async function sendSeriesToKapowarr(komgaSeriesId: string) {
   const follow = (await db.select().from(followedSeries).where(eq(followedSeries.komgaSeriesId, komgaSeriesId)))[0];
   if (!follow) throw new Error("Followed series not found");
   if (!follow.comicvineVolumeId) throw new Error("Choose a match with a ComicVine volume before sending to Kapowarr");
+  if (follow.kapowarrVolumeId) return { volumeId: follow.kapowarrVolumeId, existing: true };
   if (!env.KAPOWARR_URL || !env.KAPOWARR_API_KEY) throw new Error("Kapowarr is not configured");
   const kapowarr = new KapowarrClient({ baseUrl: env.KAPOWARR_URL, apiKey: env.KAPOWARR_API_KEY });
   const added = await kapowarr.addVolume(follow.comicvineVolumeId);

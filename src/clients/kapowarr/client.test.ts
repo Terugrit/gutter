@@ -32,4 +32,15 @@ describe("KapowarrClient", () => {
     await expect(new KapowarrClient({ baseUrl: "https://comics.example/kapowarr", apiKey: "key" }).status()).resolves.toBeUndefined();
     server.close();
   });
+  it("validates volume issue/files and the download queue", async () => {
+    server.use(
+      http.get("http://kapowarr:5656/api/volumes/7", () => HttpResponse.json({ error: null, result: { id: 7, comicvine_id: 42, issue_count: 2, issues_downloaded: 1, issues: [{ id: 9, files: [{ id: 22, filepath: "one.cbz", size: 100 }] }, { id: 10, files: [] }] } })),
+      http.get("http://kapowarr:5656/api/activity/queue", () => HttpResponse.json({ error: null, result: [{ id: 100, volume_id: 7 }, { id: 101, volume_id: 8 }] })),
+    );
+    server.listen();
+    const client = new KapowarrClient({ baseUrl: "http://kapowarr:5656", apiKey: "key" });
+    expect(await client.getVolume(7)).toMatchObject({ issue_count: 2, issues_downloaded: 1 });
+    expect(await client.getDownloadQueue()).toHaveLength(2);
+    server.close();
+  });
 });

@@ -1,6 +1,6 @@
 import { fetchWithRetry } from "@/lib/http";
 import { z } from "zod";
-import { kapowarrEnvelopeSchema, kapowarrRootFolderSchema, kapowarrVolumeSchema } from "./schemas";
+import { kapowarrEnvelopeSchema, kapowarrRootFolderSchema, kapowarrVolumeSchema, kapowarrVolumeDetailSchema, kapowarrQueueEntrySchema } from "./schemas";
 
 type Options = { baseUrl: string; apiKey: string; fetch?: typeof fetch };
 type Volume = z.infer<typeof kapowarrVolumeSchema>;
@@ -21,6 +21,8 @@ export class KapowarrClient {
   }
   async status() { await this.request("/auth/check", z.object({}), { method: "POST", body: "{}" }); }
   async listVolumes(): Promise<Volume[]> { return this.request("/volumes", kapowarrVolumeSchema.array()); }
+  async getVolume(volumeId: number) { return this.request(`/volumes/${volumeId}`, kapowarrVolumeDetailSchema); }
+  async getDownloadQueue() { return this.request("/activity/queue", kapowarrQueueEntrySchema.array()); }
   async addVolume(comicVineId: number): Promise<{ volume: Volume; existing: boolean }> {
     const existing = (await this.listVolumes()).find((volume) => volume.comicvine_id === comicVineId);
     if (existing) return { volume: existing, existing: true };

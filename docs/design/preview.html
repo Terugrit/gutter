@@ -129,6 +129,7 @@ dl.meta dd{margin:0}
 .tools button{background:none;border:0;padding:8px 0;cursor:pointer;font-size:13px;font-weight:500;text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--rule)}
 .tools button[aria-pressed="true"]{text-decoration-color:var(--accent);text-decoration-thickness:2px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:36px 22px}
+.grid > div{display:flex;flex-direction:column}
 .item{background:none;border:0;padding:0;text-align:left;cursor:pointer;display:block;width:100%}
 .item .cv{position:relative;border-bottom:3px solid transparent}
 .item.sel .cv{border-bottom-color:var(--accent)}
@@ -137,7 +138,7 @@ dl.meta dd{margin:0}
 .item .cap{border-top:1px solid var(--rule);margin-top:8px;padding-top:8px;font-size:15px;font-weight:500;line-height:1.3}
 .item:hover .cap{border-top-color:var(--text)}
 .item .cap small{display:block;font-weight:400;font-size:13px;color:var(--muted);margin-top:3px}
-.grid .lnk{display:inline-block;margin-top:6px;padding:12px 0;font-size:13px;font-weight:500;text-decoration:underline;text-underline-offset:3px}
+.grid .lnk{display:inline-block;margin-top:auto;padding:18px 0 12px;font-size:13px;font-weight:500;text-decoration:underline;text-underline-offset:3px}
 
 /* discover */
 .disc{display:grid;grid-template-columns:minmax(0,1fr) 240px;gap:56px;align-items:start}
@@ -206,6 +207,14 @@ dl.meta dd{margin:0}
 .progress-track>span{display:block;height:100%;background:var(--accent)}
 
 .index button.row{width:100%;border-left:0;border-top:0;border-right:0;background:none;padding:0;text-align:left;cursor:pointer}
+/* M06: reading suggestions and recap reuse the strip, ruled stats and index. */
+.recap-months{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:8px;margin:20px 0}
+.recap-month{display:flex;flex-direction:column;gap:8px;font-size:12px;font-weight:500;color:var(--muted)}
+.recap-month span{display:block;height:48px;border-bottom:2px solid var(--rule);position:relative}
+.recap-month i{display:block;position:absolute;bottom:0;left:0;right:0;background:var(--accent);min-height:0}
+.follow-suggestions figcaption{display:flex;flex-direction:column;align-items:flex-start}
+.follow-suggestions figcaption button{align-self:flex-start;min-height:44px}
+@media(max-width:420px){.recap-months{gap:4px}.recap-month{font-size:12px}}
 </style>
 </head>
 <body>
@@ -272,7 +281,8 @@ const REC_LIB=[['Lantern Row','Lamplight Comics','Same writer as Night Signal'],
 const REC_RND=[['Moss Kingdom','Tin Roof','Picked at random'],['The Clockwork Ferry','Harbor Press','Picked at random'],['Nightshift Saints','Marrow & Co','Picked at random'],['Sundial','Lamplight Comics','Picked at random'],['Hush Protocol','Quiet Engine','Picked at random'],['Paper Moon Motel','Tin Roof','Picked at random'],['The Fifth Season Club','Northfield','Picked at random'],['Tidewrack','Harbor Press','Picked at random'],['Copperhead Lane','Marrow & Co','Picked at random'],['Bright Machines','Lamplight Comics','Picked at random']];
 const LIB=['Night Signal','The Salt Line','Hollow Crown','Paper Tigers','Low Tide','Ash & Ember','Copper Sky','Velvet Static','The Long Orbit','Wren Street','Iron Lantern','Small Harbors','Glass Meridian','Tin Saints','Moth & Lantern','The Understudy','Field Notes from Nowhere','Salt Road'].map((t,k)=>({id:k,t,seed:k+1,pub:['Harbor Press','Lamplight Comics','Northfield','Tin Roof','Marrow & Co','Quiet Engine'][k%6],fol:k<7,attention:k===2,sel:false}));
 const SERVICES=[['Komga','http://komga:25600'],['Metron','metron.cloud'],['ComicVine','comicvine.gamespot.com'],['Kapowarr','http://kapowarr:5656'],['ntfy','http://ntfy:80/comics']];
-const ui={onlyUnread:false,q:'',onlyFollowed:false,follow:{},keyboardRow:-1};
+const ui={onlyUnread:false,q:'',onlyFollowed:false,follow:{},keyboardRow:-1,suggestionDismissed:{}};
+const SUGGESTIONS=[LIB[8],LIB[9],LIB[10],LIB[11]];
 
 /* ---------- pieces ---------- */
 const kapLabel=s=>s==='idle'?'Send to Kapowarr':s==='busy'?'Sending\u2026':'Sent to Kapowarr';
@@ -339,7 +349,7 @@ dashboard(){
     <section class="sec"><header><h2>Coming up</h2></header><div class="upcoming-week"><p class="week-label">Week of 5 Oct</p><div class="strip"><figure><a href="#/series/1"><div class="cv">${cover(1087,'Night Signal',15)}</div></a><figcaption>Night Signal #15<small class="moved-tag" title="Moved from 2026-09-23">moved</small><span>2026-10-07 / The new signal</span></figcaption></figure></div></div></section>
     <section class="sec"><header><h2>Recommended for you</h2><a href="#/discover">See all</a></header>${strip(REC_LIB,2)}</section>
     <section class="sec"><header><h2>Something different</h2><a href="#/discover">See all</a></header>${strip(REC_RND,5)}</section>
-    <section class="sec"><header><h2>Reading</h2></header>
+     <section class="sec"><header><h2>Reading</h2><a href="#/recap">View reading recap</a></header>
       <div class="stats"><div class="stat"><b>128</b><span>Books read</span></div><div class="stat"><b>6</b><span>In progress</span></div><div class="stat"><b>14</b><span>Series completed</span></div><div class="stat"><b>9</b><span>Read this month</span></div></div></section>
     <p class="foot">Sample data for the design preview. Covers are generated placeholders.</p></div>`;
 },
@@ -349,6 +359,7 @@ library(){
   return `<div class="page"><h1 class="title">Library</h1>
     <div class="tools"><input id="q" type="search" placeholder="Search your library" aria-label="Search your library" value="${esc(ui.q)}">
       <button aria-pressed="${ui.onlyFollowed}" data-act="followed-only">Followed only</button>${attention?'<a class="lnk" href="#/library">Show all followed</a>':''}</div>
+    ${!attention&&!ui.onlyFollowed&&!ui.q&&SUGGESTIONS.some(x=>!ui.suggestionDismissed[x.id]&&!x.fol)?`<section class="sec follow-suggestions" style="margin:24px 0 32px"><header><h2>Reading, not following</h2></header><div class="strip">${SUGGESTIONS.filter(x=>!ui.suggestionDismissed[x.id]&&!x.fol).map(x=>`<figure><div class="cv">${cover(x.seed,x.t)}</div><figcaption>${esc(x.t)}<span>${esc(x.pub)}</span><button data-suggest-follow="${x.id}">Follow</button><button data-suggest-dismiss="${x.id}">Dismiss</button></figcaption></figure>`).join('')}</div></section>`:''}
     <div class="grid">${items.map(x=>`<div><button class="item ${x.sel?'sel':''}" data-lib="${x.id}" aria-pressed="${x.sel}">
       <div class="cv">${cover(x.seed,x.t)}<span class="chk" aria-hidden="true">\u2713</span></div>
       <div class="cap">${esc(x.t)}<small>${x.attention?'\u25CB Needs match':x.fol?'\u25CF Following':esc(x.pub)}</small></div></button>${x.fol?`<a class="lnk" href="#/series/${x.id}">Manage issues \u2192</a>`:''}</div>`).join('')||'<p class="muted">No series match that search.</p>'}</div>
@@ -357,23 +368,27 @@ library(){
 },
 discover(){
   const list=(a,off)=>a.map((r,k)=>`<div class="row drow" data-prev="${k+off}|${esc(r[0])}"><span class="num">${pad(k+1)}</span><span class="thumb">${cover(k+off,r[0])}</span>
-    <span class="t">${esc(r[0])} <span class="muted">/ ${esc(r[1])}</span><small>${esc(r[2])}</small></span>
+     <span class="t">${esc(r[0])} <span class="muted">/ ${esc(r[1])}</span><small>${esc(r[2])}</small></span>
     <button class="lnk" data-follow="${esc(r[0])}">${ui.follow[r[0]]?'Following':'Follow'}</button></div>`).join('');
   return `<div class="page"><h1 class="title">Discover</h1>
     <div class="disc"><div>
       <section class="sec" style="margin-top:24px"><header><h2>Recommended for you</h2><button data-act="refresh">Refresh</button></header>${list(REC_LIB,2)}</section>
       <section class="sec"><header><h2>Something different</h2><button data-act="refresh">Refresh</button></header>${list(REC_RND,5)}</section></div>
-      <aside class="preview" aria-hidden="true"><div class="cv" id="pv"></div><p id="pvt">Hover a row to preview its cover.</p></aside></div></div>`;
+       <aside class="preview" aria-hidden="true"><div class="cv" id="pv"></div><p id="pvt">Hover a row to preview its cover.</p><p id="pvr"></p></aside></div></div>`;
+},
+recap(arg){
+  const year=arg||'2026',months=[3,5,9,8,10,7,11,6,12,9,0,0];
+  return `<div class="page"><h1 class="title">Reading recap</h1><div class="tools"><a class="lnk" href="#/dashboard">← Dashboard</a><a class="lnk" href="#/recap/2025">2025</a><a class="lnk" href="#/recap/2026" aria-current="page">2026</a></div><section class="sec" style="margin-top:24px"><header><h2>${esc(year)} in books</h2></header><div class="stats"><div class="stat"><b>80</b><span>Books completed</span></div><div class="stat"><b>4</b><span>Series finished</span></div><div class="stat"><b>8</b><span>Longest reading streak · days</span></div><div class="stat"><b>Sep</b><span>Busiest month</span></div></div></section><section class="sec"><header><h2>Months</h2></header><div class="recap-months" aria-label="Books completed each month">${months.map((count,i)=>`<div class="recap-month"><span title="${count} books"><i style="height:${count/12*100}%"></i></span>${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][i]}</div>`).join('')}</div></section><section class="sec"><header><h2>Top series</h2></header>${['Night Signal','The Salt Line','Hollow Crown'].map((title,i)=>`<div class="row"><span class="num">${pad(i+1)}</span><span class="t">${title}</span><span class="muted">${12-i*3} books</span></div>`).join('')}</section></div>`;
 },
 series(){
   const skipped=!!ui.issueSkipped, selected=ui.seriesIssue, owned=ui.progressState==='incomplete'?1:2, state=ui.progressState||'incomplete';
-  return `<div class="split${selected?' has-sel':''}"><aside class="index" aria-label="Series issues"><div class="mbar"><a href="#/library">← Library</a></div><div class="filters"><button aria-pressed="${!ui.skippedOnly}" data-act="issues-active">Issues</button><button aria-pressed="${!!ui.skippedOnly}" data-act="issues-skipped">Skipped (${skipped?1:0})</button></div><div class="idx-head"><span>No.</span><span>Issue</span><span>State</span></div><button class="row" data-act="series-manage"><span class="num">—</span><span class="t">Manage series</span><span>→</span></button>${!!ui.skippedOnly===skipped?`<button class="row${selected?' sel':''}" data-act="series-issue"><span class="num">01</span><span class="t">#2 Second light <small class="moved-tag" title="Moved from 2026-09-14">moved<span class="moved-from"> · from 2026-09-14</span></small></span><span>${skipped?'Skipped':owned===2?'● Owned':'○ Missing'}</span></button>`:'<p class="muted">No skipped issues.</p>'}</aside><section class="stage"><div class="mbar"><button class="lnk" data-act="series-manage">← Issues</button></div><h1 class="hl"><span class="line">Night Signal</span><span class="line">${selected?'Issue 2':'Issues'}</span><span class="line">${selected?'Out 2026-09-21':'From your library'}</span></h1><div class="series-progress"><div class="series-progress-label"><span>${skipped?'1 / 1':owned+' / 2'} issues owned</span><span>${skipped?'Up to date':state==='complete'?'Complete':state==='up-to-date'?'Up to date':''}</span></div><div class="progress-track" role="progressbar" aria-label="Collection progress" aria-valuemin="0" aria-valuemax="2" aria-valuenow="${owned}"><span style="width:${skipped||owned===2?100:50}%"></span></div></div><div class="detail"><div class="cv">${cover(1,'Night Signal')}</div><div><dl class="meta"><div><dt>Publisher</dt><dd>Harbor Press</dd></div><div><dt>Match</dt><dd>Confirmed</dd></div><div><dt>Monitoring</dt><dd>All issues</dd></div>${selected?'<div><dt>Issue title</dt><dd>Second light</dd></div><div><dt>In your library</dt><dd>○ Missing</dd></div>':''}</dl><div class="tools"><button>Future only</button><button aria-pressed="true">All issues</button></div>${selected?`<div class="tools"><button data-act="issue-skip">${skipped?'Unskip issue':'Skip issue'}</button></div>`:''}</div></div><div class="dock" role="group"><button class="btn primary">Send to Kapowarr</button><button class="btn">Change match</button></div><div class="filters" aria-label="Preview progress states"><button data-act="progress-incomplete">Incomplete</button><button data-act="progress-up-to-date">Up to date</button><button data-act="progress-complete">Complete</button></div></section></div>`;
+  return `<div class="split${selected?' has-sel':''}"><aside class="index" aria-label="Series issues"><div class="mbar"><a href="#/library">← Library</a></div><div class="filters"><button aria-pressed="${!ui.skippedOnly}" data-act="issues-active">Issues</button><button aria-pressed="${!!ui.skippedOnly}" data-act="issues-skipped">Skipped (${skipped?1:0})</button></div><div class="idx-head"><span>No.</span><span>Issue</span><span>State</span></div><button class="row" data-act="series-manage"><span class="num">—</span><span class="t">Manage series</span><span>→</span></button>${!!ui.skippedOnly===skipped?`<button class="row${selected?' sel':''}" data-act="series-issue"><span class="num">01</span><span class="t">#2 Second light <small class="moved-tag" title="Moved from 2026-09-14">moved<span class="moved-from"> · from 2026-09-14</span></small></span><span>${skipped?'Skipped':owned===2?'● Owned':'○ Missing'}</span></button>`:'<p class="muted">No skipped issues.</p>'}</aside><section class="stage"><div class="mbar"><button class="lnk" data-act="series-manage">← Issues</button></div><h1 class="hl"><span class="line">Night Signal</span><span class="line">${selected?'Issue 2':'Issues'}</span><span class="line">${selected?'Out 2026-09-21':'From your library'}</span></h1><div class="series-progress"><div class="series-progress-label"><span>${skipped?'1 / 1':owned+' / 2'} issues owned</span><span>${skipped?'Up to date':state==='complete'?'Complete':state==='up-to-date'?'Up to date':''}</span></div><div class="progress-track" role="progressbar" aria-label="Collection progress" aria-valuemin="0" aria-valuemax="2" aria-valuenow="${owned}"><span style="width:${skipped||owned===2?100:50}%"></span></div></div><p class="muted" role="status">Sent to Kapowarr · 2 downloading · 12 of 20 files</p><div class="detail"><div class="cv">${cover(1,'Night Signal')}</div><div><dl class="meta"><div><dt>Publisher</dt><dd>Harbor Press</dd></div><div><dt>Match</dt><dd>Confirmed</dd></div><div><dt>Monitoring</dt><dd>All issues</dd></div>${selected?'<div><dt>Issue title</dt><dd>Second light</dd></div><div><dt>In your library</dt><dd>○ Missing</dd></div>':''}</dl><div class="tools"><button>Future only</button><button aria-pressed="true">All issues</button></div>${selected?`<div class="tools"><button data-act="issue-skip">${skipped?'Unskip issue':'Skip issue'}</button></div>`:''}</div></div><div class="dock" role="group"><button class="btn primary">Sent to Kapowarr</button><button class="btn">Change match</button></div><div class="filters" aria-label="Preview progress states"><button data-act="progress-incomplete">Incomplete</button><button data-act="progress-up-to-date">Up to date</button><button data-act="progress-complete">Complete</button></div></section></div>`;
 },
 settings(){
   return `<div class="page"><h1 class="title">Settings</h1>
     <section class="sec" style="margin-top:24px"><header><h2>Connections</h2></header>
     ${SERVICES.map((s,k)=>`<div class="srow"><span>${s[0]}</span><span class="muted u">${s[1]}</span><span data-st="${k}">\u25CF Connected</span><button class="lnk" data-test="${k}">Test</button></div>`).join('')}
-    </section><section class="sec"><header><h2>Data and jobs</h2></header><div class="srow"><span>Database backup</span><span class="muted u">Last successful: Never</span><span>● Ready</span><button class="lnk" data-act="backup-db">Run now</button></div></section><section class="sec"><header><h2>Follows</h2><a href="#/settings" data-act="download-follows">Download follows</a></header><p class="muted">Import adds or reactivates follows and restores skipped issues. Existing follows are kept.</p><div class="tools"><label for="follows-file">Import follows</label><input id="follows-file" type="file" accept=".json,application/json"></div></section></div>`;
+    </section><section class="sec"><header><h2>Komga library</h2><button>Load libraries</button></header><p class="muted">Selected library: Comics.</p><div class="tools"><button data-act="scan-komga">Scan library files</button></div><p class="muted">A file scan checks for newly downloaded volumes; Library sync reads Komga records into Gutter.</p></section><section class="sec"><header><h2>Data and jobs</h2></header><div class="srow"><span>Database backup</span><span class="muted u">Last successful: Never</span><span>● Ready</span><button class="lnk" data-act="backup-db">Run now</button></div></section><section class="sec"><header><h2>Notification actions</h2></header><div class="srow"><span>Action buttons</span><span class="muted u">Off (set ACTION_SECRET)</span><span></span><span></span></div></section><section class="sec"><header><h2>Follows</h2><a href="#/settings" data-act="download-follows">Download follows</a></header><p class="muted">Import adds or reactivates follows and restores skipped issues. Existing follows are kept.</p><div class="tools"><label for="follows-file">Import follows</label><input id="follows-file" type="file" accept=".json,application/json"></div></section></div>`;
 }};
 
 /* ---------- router ---------- */
@@ -402,10 +417,12 @@ function kap(obj,rerender){
   setTimeout(()=>{obj.kap='done';toast('Sent to Kapowarr');render()},1100);
 }
 document.addEventListener('click',e=>{
-  const b=e.target.closest('[data-kap],[data-mkap],[data-unread],[data-act],[data-lib],[data-follow],[data-test]');if(!b)return;
+  const b=e.target.closest('[data-kap],[data-mkap],[data-unread],[data-act],[data-lib],[data-follow],[data-test],[data-suggest-follow],[data-suggest-dismiss]');if(!b)return;
   if(b.dataset.kap)kap(N.find(n=>n.id==b.dataset.kap));
   else if(b.dataset.mkap)kap(MISSING.find(m=>m.id===b.dataset.mkap));
   else if(b.dataset.unread){const n=N.find(n=>n.id==b.dataset.unread);n.u=1;$('#tabdot').hidden=false;b.textContent='Marked unread';b.disabled=true;toast('Marked unread')}
+  else if(b.dataset.suggestDismiss){ui.suggestionDismissed[b.dataset.suggestDismiss]=true;render()}
+  else if(b.dataset.suggestFollow){const x=LIB[+b.dataset.suggestFollow];x.fol=true;toast('Following '+x.t);render()}
   else if(b.dataset.lib){const x=LIB[+b.dataset.lib];x.sel=!x.sel;render()}
   else if(b.dataset.follow){const t=b.dataset.follow;ui.follow[t]=!ui.follow[t];toast(ui.follow[t]?'Following '+t:'Unfollowed '+t);render()}
   else if(b.dataset.test){const k=b.dataset.test,s=$(`[data-st="${k}"]`);s.textContent='Testing\u2026';setTimeout(()=>{s.textContent='\u25CF Connected'},800)}
@@ -432,7 +449,8 @@ document.addEventListener('input',e=>{
 document.addEventListener('mouseover',e=>{
   const r=e.target.closest('[data-prev]');if(!r||!$('#pv'))return;
   const [seed,title]=r.dataset.prev.split('|');
-  $('#pv').innerHTML=cover(+seed,title);$('#pvt').textContent=title;
+   $('#pv').innerHTML=cover(+seed,title);$('#pvt').textContent=title;
+   const item=[...REC_LIB,...REC_RND].find(x=>x[0]===title);$('#pvr').textContent=item?.[2]||'';
 });
 document.addEventListener('keydown',e=>{
   if(!/^#\/notifications\/\d+/.test(location.hash)||e.target.matches('input,select,textarea'))return;

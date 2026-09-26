@@ -15,3 +15,6 @@ default priority by omitting the `Priority` header.
 `NTFY_URL` is the server root, not a topic URL. Topics are restricted by ntfy
 to letters, numbers, underscores, and dashes; configuration validation keeps
 that invalid state out of jobs.
+## HTTP action buttons (verified 2026-09-26)
+
+ntfy's [publishing reference](https://docs.ntfy.sh/publish/#action-buttons) permits up to three actions in an `Actions` header. Gutter sends at most two in the documented `http, <label>, <url>, method=POST, body=<token>` form, separated by `; `. The button POST body carries the signed token; it is never placed in a URL. Without `ACTION_SECRET`, Gutter leaves out the Actions header.
