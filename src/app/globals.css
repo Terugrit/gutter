@@ -51,6 +51,7 @@ a.row:hover .t{transform:translateX(4px)}
 .dot{width:8px;height:8px;border-radius:50%;background:transparent;margin-right:4px}
 .dot.on{background:var(--accent)}
 .row .lnk{font-size:13px;font-weight:500;text-decoration:underline;text-underline-offset:3px;background:none;border:0;padding:8px 0;cursor:pointer}
+.missing-actions{display:flex;align-items:center;gap:12px;white-space:nowrap}
 
 /* split (notifications, series) */
 .split{height:100%;display:grid;grid-template-columns:340px minmax(0,1fr)}
@@ -230,6 +231,37 @@ dl.meta dd{margin:0}
 @media (max-width:1023px){.tabbar a{padding:12px 8px;min-width:44px;text-align:center}}
 @media (max-width:420px){.tabbar{width:calc(100% - 16px);overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;-webkit-overflow-scrolling:touch}.tabbar::-webkit-scrollbar{display:none}.tabbar a{flex:none;min-height:44px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+
+/* Shared series detail overlay: existing cover, metadata, progress and button language. */
+.series-overlay-layer{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:24px}
+.series-overlay-backdrop{position:absolute;inset:0;width:100%;height:100%;border:0;background:var(--text);opacity:.25;cursor:pointer}
+.series-overlay-panel{position:relative;width:min(680px,100%);max-height:calc(100% - 48px);overflow:auto;background:var(--bg);border:1px solid var(--text);padding:24px;animation:series-overlay-in .18s ease-out}
+.series-overlay-close{display:block;margin:0 0 16px auto;border:0;background:none;padding:8px 0;font-size:13px;font-weight:500;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.series-overlay-layout{display:grid;grid-template-columns:220px minmax(0,1fr);gap:32px}
+.series-overlay-summary .cv{width:100%}
+.series-overlay-summary h2{margin:14px 0 0;font-size:1.5rem;font-weight:500;line-height:1.1}
+.series-overlay-content .desc{margin-top:20px}
+.series-overlay-progress{height:2px;background:var(--rule);margin-top:16px}
+.series-overlay-progress>span{display:block;height:100%;background:var(--accent)}
+.series-overlay-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}
+.series-overlay-error{padding:28px 0}
+.series-overlay-error .lnk{border:0;background:none;padding:8px 0;font-size:13px;font-weight:500;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.series-overlay-skeleton .series-overlay-summary .cv{background:var(--placeholder)}
+.series-overlay-skeleton .skeleton-bar{margin-top:16px}
+.series-overlay-skeleton .series-overlay-content .skeleton-bar{width:100%;margin:0 0 24px}
+[data-series-detail]{cursor:pointer}
+@keyframes series-overlay-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@media(max-width:700px){
+  .series-overlay-layer{align-items:flex-end;justify-items:center;padding:0}
+  .series-overlay-panel{width:100%;max-height:88%;border-width:1px 0 0;padding:0 16px 32px;overscroll-behavior:contain;animation:series-overlay-sheet-in .22s ease-out}
+  .series-overlay-close{position:sticky;top:0;z-index:2;width:100%;margin:0;padding:14px 0 10px;text-align:right;background:var(--bg);border-bottom:1px solid var(--rule)}
+  .series-overlay-layout{display:block}
+  .series-overlay-summary{position:sticky;top:49px;z-index:1;display:grid;grid-template-columns:92px minmax(0,1fr);gap:16px;align-items:end;padding:12px 0 16px;background:var(--bg);border-bottom:1px solid var(--rule)}
+  .series-overlay-summary h2{margin:0;font-size:1.5rem}
+  .series-overlay-content{padding-top:18px}
+  .series-overlay-skeleton .series-overlay-summary{align-items:center}
+  @keyframes series-overlay-sheet-in{from{transform:translateY(100%)}to{transform:none}}
+}
 
 /* Series management reuses the index and library link styles. */
 .index button.row{width:100%;border-left:0;border-top:0;border-right:0;background:none;padding:0;text-align:left;cursor:pointer}

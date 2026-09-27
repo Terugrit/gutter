@@ -1,6 +1,7 @@
 import { and, eq, inArray, or } from "drizzle-orm";
 import { MetronClient, type IssueSearch, type SeriesSearch } from "@/clients/metron/client";
 import type { MetronCreator, MetronIssue, MetronSeries } from "@/clients/metron/schemas";
+import type { ComicVineVolume } from "@/clients/comicvine/schemas";
 import { ComicVineClient } from "@/clients/comicvine/client";
 import { db } from "@/db";
 import { followedSeries, issues, kvCache } from "@/db/schema";
@@ -23,6 +24,11 @@ function cacheKey(prefix: string, value: unknown) { return `${prefix}:${JSON.str
 async function cached<T>(key: string): Promise<T | null> {
   const row = (await db.select().from(kvCache).where(eq(kvCache.key, key)))[0];
   if (!row || new Date(row.fetchedAt).getTime() + row.ttlSeconds * 1000 < Date.now()) return null;
+  try { return JSON.parse(row.valueJson) as T; } catch { return null; }
+}
+async function cachedRegardlessOfAge<T>(key: string): Promise<T | null> {
+  const row = (await db.select().from(kvCache).where(eq(kvCache.key, key)))[0];
+  if (!row) return null;
   try { return JSON.parse(row.valueJson) as T; } catch { return null; }
 }
 async function saveCache(key: string, value: unknown, ttlSeconds: number) {
@@ -131,6 +137,29 @@ export async function getMetronSeries(id: number, force = false): Promise<Metron
   if (!metron) return null;
   const result = await metron.getSeries(id);
   await saveCache(key, result, SEARCH_TTL_SECONDS);
+  return result;
+}
+export async function getCachedMetronSeries(id: number): Promise<MetronSeries | null> {
+  return cachedRegardlessOfAge<MetronSeries>(`metron:series:${id}`);
+}
+export async function searchComicVineVolumes(title: string): Promise<ComicVineVolume[]> {
+  const key = cacheKey("comicvine:search", title);
+  const hit = await cachedRegardlessOfAge<ComicVineVolume[]>(key);
+  if (hit) return hit;
+  const comicVine = comicVineClient();
+  if (!comicVine) return [];
+  const result = await enqueueRateLimited(() => comicVine.searchVolumes(title));
+  await saveCache(key, result, COMICVINE_TTL_SECONDS);
+  return result;
+}
+export async function getComicVineVolume(id: number): Promise<ComicVineVolume | null> {
+  const key = `comicvine:volume-detail:${id}`;
+  const hit = await cachedRegardlessOfAge<ComicVineVolume>(key);
+  if (hit) return hit;
+  const comicVine = comicVineClient();
+  if (!comicVine) return null;
+  const result = await enqueueRateLimited(() => comicVine.getVolume(id));
+  if (result) await saveCache(key, result, COMICVINE_TTL_SECONDS);
   return result;
 }
 export async function searchUpcomingMetronIssues(search: IssueSearch): Promise<MetronIssue[]> {

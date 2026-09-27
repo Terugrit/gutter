@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.4
+
+- Add one shared series detail overlay for Dashboard, Discover, Coming Soon, and Shelf cards without navigating away or losing list position.
+- Show covers, title and publication metadata, series status, owned-issue progress, genres, next release, follow state, and reading-shelf state in the overlay.
+- Add Follow/Unfollow and Send to Kapowarr overlay actions that reuse the existing application endpoints and preserve independent card actions.
+- Add shareable `?series=` deep links, keyboard and backdrop dismissal, loading and retry states, an accessible desktop dialog, and a swipe-down mobile bottom sheet.
+- Read overlay metadata from SQLite and existing caches first, fetch uncached Metron or ComicVine data through the shared rate-limited queue, and add indexed external-ID lookups for the detail route.
+- Use ComicVine volume details as the exclusive overlay-description source, preferring its full description and falling back to its deck, with cached responses and safe HTML-to-text conversion.
+- Add a compact Ignore action to Dashboard missing issues. Ignored issues immediately leave the list and remain reversible from the series Skipped view.
+- Fix the maskable PWA icon manifest path and add desktop/mobile visual coverage plus API, cache, and interaction tests for the new detail workflow.
+
 ## 0.1.3
 
 - Add web app manifest for proper iOS/Android home screen icon support.

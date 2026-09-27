@@ -29,6 +29,16 @@ describe("ComicVineClient", () => {
     }));
     await expect(new ComicVineClient({ apiKey: "key" }).getIssueVolumeId(873262)).resolves.toBe(10);
   });
+  it("fetches a volume description without unrelated ComicVine fields", async () => {
+    server.use(http.get("https://comicvine.gamespot.com/api/volume/4050-10/", ({ request }) => {
+      const url = new URL(request.url);
+      expect(url.searchParams.get("api_key")).toBe("key");
+      expect(url.searchParams.get("format")).toBe("json");
+      expect(url.searchParams.get("field_list")).toBe("id,name,deck,description");
+      return HttpResponse.json({ status_code: 1, error: "OK", results: { id: 10, name: "Night Signal", deck: "A coastal mystery.", description: "<p>A strange signal crosses the flooded coast.</p>" } });
+    }));
+    await expect(new ComicVineClient({ apiKey: "key" }).getVolume(10)).resolves.toMatchObject({ id: 10, description: "<p>A strange signal crosses the flooded coast.</p>" });
+  });
   it("returns null when ComicVine cannot find the issue", async () => {
     server.use(http.get("https://comicvine.gamespot.com/api/issue/4000-999999/", () => HttpResponse.json({ status_code: 101, error: "Object Not Found", results: null })));
     await expect(new ComicVineClient({ apiKey: "key" }).getIssueVolumeId(999999)).resolves.toBeNull();

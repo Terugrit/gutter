@@ -38,6 +38,18 @@ notifications, Discover, and the series issue index. It leaves typing and
 native button/link Enter behavior alone. Library remains a two-dimensional
 grid without this navigation.
 
+Card-based series details are owned by the root-level
+`SeriesDetailOverlayProvider`. Cards opt in with a `data-series-detail`
+reference (`metron:<id>`, `comicvine:<id>`, or `komga:<id>`); the provider
+ignores nested controls so existing Follow, shelf, watch, and Kapowarr actions
+do not open the overlay. It mirrors the open reference into `?series=` with a
+native history replacement, preserving the underlying client state and scroll.
+`GET /api/series/[id]` delegates to `src/lib/services/series-overlay.ts`, which
+prefers SQLite rows and even expired detail-cache entries before using the
+shared rate-limited Metron/ComicVine path. Overlay descriptions are exclusively
+ComicVine volume descriptions (falling back to ComicVine's deck), cached by
+volume ID and converted from API HTML to safe plain text before rendering.
+
 ## Jobs and alerts
 
 `src/instrumentation.ts` runs the first Komga sync and registers the hourly

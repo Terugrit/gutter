@@ -3,6 +3,7 @@ import "./globals.css";
 import { TabBar } from "@/components/tab-bar";
 import { ToastProvider } from "@/components/toast";
 import { TopBar } from "@/components/top-bar";
+import { SeriesDetailOverlayProvider } from "@/components/series-detail-overlay";
 import { getAttentionCount } from "@/lib/services/attention";
 import type { Metadata, Viewport } from "next";
 
@@ -35,9 +36,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en" className={playfair.variable}>
       <body data-attention-count={attentionCount}>
         <ToastProvider>
-          <TopBar attentionCount={attentionCount} />
-          {children}
-          <TabBar attentionCount={attentionCount} />
+          <SeriesDetailOverlayProvider>
+            <TopBar attentionCount={attentionCount} />
+            {children}
+            <TabBar attentionCount={attentionCount} />
+          </SeriesDetailOverlayProvider>
         </ToastProvider>
       </body>
     </html>

@@ -14,6 +14,7 @@ test.beforeEach(() => {
   sqlite.exec("DELETE FROM issues WHERE followed_series_id IN (SELECT id FROM followed_series WHERE komga_series_id='visual:m02'); DELETE FROM followed_series WHERE komga_series_id='visual:m02';");
   sqlite.exec("DELETE FROM issues WHERE followed_series_id IN (SELECT id FROM followed_series WHERE komga_series_id='visual:m04'); DELETE FROM followed_series WHERE komga_series_id='visual:m04';");
   sqlite.prepare("DELETE FROM followed_series WHERE komga_series_id = ?").run("visual:12");
+  sqlite.prepare("UPDATE issues SET skipped_at = NULL WHERE id BETWEEN 100 AND 199").run();
   const setRead = sqlite.prepare("UPDATE notifications SET read_at = ?, deleted_at = NULL WHERE id = ?");
   for (const item of sample.notifications) setRead.run(item.u ? null : "2026-09-20T00:00:00Z", item.id);
   sqlite.close();
@@ -52,6 +53,43 @@ test("Settings requests a Komga file scan separately from library sync", async (
   await expect(page.locator("section").filter({ has: page.getByRole("heading", { name: "Komga library" }) }).getByRole("status")).toContainText("Komga file scan requested");
 });
 const shot = async (page: import("@playwright/test").Page, name: string) => { await page.locator("#clock").evaluate((element) => { element.textContent = ""; }); await expect(page).toHaveScreenshot(`${name}.png`, { maxDiffPixelRatio: 0.02 }); };
+
+test("dashboard ignores a missing issue in place", async ({ page }) => {
+  await page.setViewportSize(desktop);
+  await page.goto("/");
+  const section = page.locator(".sec").filter({ has: page.getByRole("heading", { name: "Missing issues" }) });
+  const rows = section.locator(".row");
+  const count = await rows.count();
+  const button = rows.first().getByRole("button", { name: /^Ignore / });
+  const label = await button.getAttribute("aria-label");
+  await button.click();
+  await expect(rows).toHaveCount(count - 1);
+  await expect(page.getByText(label!.replace(/^Ignore /, "Ignored ").replace(" issue ", " #"), { exact: true })).toBeVisible();
+});
+
+test("shared series overlay opens in place, deep-links, closes, and leaves card actions independent", async ({ page }) => {
+  await page.setViewportSize(desktop);
+  await page.goto("/");
+  const recommended = page.locator(".sec").filter({ has: page.getByRole("heading", { name: "Recommended for you" }) });
+  await recommended.getByRole("button", { name: "Save to shelf" }).first().click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  const title = (await recommended.locator("figure").first().locator("figcaption").evaluate((element) => element.firstChild?.textContent ?? "")).trim();
+  await recommended.locator("figure").first().locator(".cv").click();
+  await expect(page).toHaveURL(/series=metron%3A2000/);
+  await expect(page.getByRole("dialog")).toContainText(title);
+  await shot(page, "desktop-series-overlay");
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page).not.toHaveURL(/series=/);
+  await page.goto("/?series=metron%3A2000");
+  await expect(page.getByRole("dialog")).toContainText(title);
+  await page.getByRole("button", { name: "Close series details", exact: true }).click();
+  await expect(page).not.toHaveURL(/series=/);
+  await page.setViewportSize(mobile);
+  await recommended.locator("figure").first().locator(".cv").click();
+  await expect(page.getByRole("dialog")).toContainText(title);
+  await shot(page, "mobile-series-overlay");
+});
 
 test("shelf saves recommendations from both pages without following", async ({ page }) => {
   await page.setViewportSize(desktop);
@@ -183,7 +221,7 @@ test("Library keeps Manage issues links aligned when titles wrap", async ({ page
   })).toBeLessThan(1);
 });
 test("coming-up dashboard strip on desktop and mobile", async ({ page }) => {
-  const date = new Date(Date.now() + 15 * 86_400_000).toISOString().slice(0, 10);
+  const date = "2026-10-07";
   const sqlite = new Database(resolve("data/visual-test.db"));
   const follow = sqlite.prepare("INSERT INTO followed_series (komga_series_id,title,publisher,match_status,monitor_mode,created_at) VALUES ('visual:m04','Night Signal','Harbor Press','confirmed','all','2020-01-01T00:00:00Z')").run();
   sqlite.prepare("INSERT INTO issues (metron_issue_id,followed_series_id,number,title,store_date,previous_date,date_changed_at,updated_at) VALUES (990004,?,15,'The new signal',?,?,?,?)").run(follow.lastInsertRowid, date, "2026-09-23", Date.now(), new Date().toISOString());

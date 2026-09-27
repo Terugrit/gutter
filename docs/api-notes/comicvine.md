@@ -2,7 +2,8 @@
 
 - The fallback uses `GET https://comicvine.gamespot.com/api/search/` with `api_key`, `format=json`, `resources=volume`, and `query`.
 - The response envelope has `status_code`, `error`, and `results`; only volume results are accepted. The selected result supplies `id` as the ComicVine volume ID.
-- Calls are made only after a selected Metron record has no `cv_id`, then cached and sent through the shared metadata limiter.
+- ComicVine search calls are made only after a selected Metron record has no `cv_id`, then cached and sent through the shared metadata limiter.
+- Series overlays use ComicVine as their sole description source. `GET /api/volume/4050-<volume id>/` with `field_list=id,name,deck,description` returns the volume's long HTML `description` and short plain-text `deck`; Gutter converts the long description to plain text and falls back to the deck. The detail response is cached and uses the shared metadata limiter. Source: ComicVine's API resource documentation and documented volume-detail examples.
 
 ## Issue links in tagged Komga books
 

@@ -11,6 +11,7 @@ export const metronSeriesSchema = z.object({
   cv_id: z.number().int().nullable().optional(),
   language: z.string().nullable().optional(),
   status: z.string().nullable().optional(),
+  desc: z.string().nullable().optional(),
   genres: z.array(z.object({ id: z.number().int().optional(), name: z.string() }).passthrough()).optional(),
 }).passthrough();
 export const metronSeriesDetailSchema = metronSeriesSchema.extend({ series: z.string().optional(), name: z.string().optional() })

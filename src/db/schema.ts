@@ -5,8 +5,8 @@ export const followedSeries = sqliteTable("followed_series", {
   id: integer("id").primaryKey({ autoIncrement: true }), komgaSeriesId: text("komga_series_id").notNull().unique(), title: text("title").notNull(), publisher: text("publisher"),
   metronSeriesId: integer("metron_series_id"), comicvineVolumeId: integer("comicvine_volume_id"), kapowarrVolumeId: integer("kapowarr_volume_id"),
   matchStatus: text("match_status", { enum: ["auto", "confirmed", "unmatched"] }).notNull().default("unmatched"), monitorMode: text("monitor_mode", { enum: ["future_only", "all"] }).notNull().default("future_only"), active: integer("active", { mode: "boolean" }).notNull().default(true), createdAt: text("created_at").notNull().default("(strftime('%Y-%m-%dT%H:%M:%fZ','now'))")
-});
-export const issues = sqliteTable("issues", { skippedAt: integer("skipped_at"), previousDate: text("previous_date"), dateChangedAt: integer("date_changed_at"), id: integer("id").primaryKey({ autoIncrement: true }), metronIssueId: integer("metron_issue_id").notNull().unique(), followedSeriesId: integer("followed_series_id").notNull(), number: text("number").notNull(), title: text("title"), storeDate: text("store_date"), coverUrl: text("cover_url"), description: text("description"), creditsJson: text("credits_json"), owned: integer("owned", { mode: "boolean" }).notNull().default(false), active: integer("active", { mode: "boolean" }).notNull().default(true), updatedAt: text("updated_at").notNull() });
+}, (table) => [index("followed_series_metron_series_idx").on(table.metronSeriesId), index("followed_series_comicvine_volume_idx").on(table.comicvineVolumeId)]);
+export const issues = sqliteTable("issues", { skippedAt: integer("skipped_at"), previousDate: text("previous_date"), dateChangedAt: integer("date_changed_at"), id: integer("id").primaryKey({ autoIncrement: true }), metronIssueId: integer("metron_issue_id").notNull().unique(), followedSeriesId: integer("followed_series_id").notNull(), number: text("number").notNull(), title: text("title"), storeDate: text("store_date"), coverUrl: text("cover_url"), description: text("description"), creditsJson: text("credits_json"), owned: integer("owned", { mode: "boolean" }).notNull().default(false), active: integer("active", { mode: "boolean" }).notNull().default(true), updatedAt: text("updated_at").notNull() }, (table) => [index("issues_followed_series_active_idx").on(table.followedSeriesId, table.active)]);
 export const notifications = sqliteTable("notifications", { id: integer("id").primaryKey({ autoIncrement: true }), issueId: integer("issue_id").notNull(), type: text("type", { enum: ["new_release", "weekly_digest"] }).notNull(), dedupeKey: text("dedupe_key").notNull().unique(), sentAt: text("sent_at"), ntfyStatus: text("ntfy_status"), readAt: text("read_at"), deletedAt: text("deleted_at") });
 export const kvCache = sqliteTable("kv_cache", { key: text("key").primaryKey(), valueJson: text("value_json").notNull(), fetchedAt: text("fetched_at").notNull(), ttlSeconds: integer("ttl_seconds").notNull() });
 export const readingShelf = sqliteTable("reading_shelf", {
@@ -35,7 +35,7 @@ export const upcomingReleases = sqliteTable("upcoming_releases", {
   isWildcard: integer("is_wildcard", { mode: "boolean" }).notNull().default(false),
   source: text("source", { enum: ["metron", "comicvine", "manual"] }).notNull(),
   lastRefreshedAt: text("last_refreshed_at").notNull(),
-}, (table) => [index("upcoming_releases_date_idx").on(table.expectedReleaseDate), index("upcoming_releases_metron_series_idx").on(table.metronSeriesId)]);
+}, (table) => [index("upcoming_releases_date_idx").on(table.expectedReleaseDate), index("upcoming_releases_metron_series_idx").on(table.metronSeriesId), index("upcoming_releases_comicvine_series_idx").on(table.comicvineSeriesId)]);
 
 export const dismissedSeries = sqliteTable("dismissed_series", {
   id: integer("id").primaryKey({ autoIncrement: true }),

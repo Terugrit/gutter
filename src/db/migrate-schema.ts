@@ -99,6 +99,9 @@ export function migrateSchema(sqlite: Database.Database) {
       CREATE INDEX IF NOT EXISTS notifications_type_read_at_idx ON notifications (type, read_at);
       CREATE INDEX IF NOT EXISTS notifications_type_deleted_at_idx ON notifications (type, deleted_at);
       CREATE INDEX IF NOT EXISTS followed_series_active_match_status_idx ON followed_series (active, match_status);
+      CREATE INDEX IF NOT EXISTS followed_series_metron_series_idx ON followed_series (metron_series_id);
+      CREATE INDEX IF NOT EXISTS followed_series_comicvine_volume_idx ON followed_series (comicvine_volume_id);
+      CREATE INDEX IF NOT EXISTS upcoming_releases_comicvine_series_idx ON upcoming_releases (comicvine_series_id);
     `);
     const mockEntry = sqlite.prepare("SELECT 1 FROM kv_cache WHERE key LIKE 'mock:%' LIMIT 1").get();
     if (mockEntry) sqlite.prepare("DELETE FROM kv_cache WHERE key LIKE 'mock:%'").run();

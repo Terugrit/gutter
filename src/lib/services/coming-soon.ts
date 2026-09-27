@@ -255,7 +255,7 @@ export async function getReleaseShelf(now = new Date()) {
     const date = new Date(shelf.addedAt);
     const monday = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
     monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7));
-    return { ...shelf, expectedReleaseDate: release?.expectedReleaseDate ?? null, week: monday.toISOString().slice(0, 10), stale: now.getTime() - date.getTime() >= 7 * 86400000 };
+    return { ...shelf, metronSeriesId: release?.metronSeriesId ?? null, comicvineSeriesId: release?.comicvineSeriesId ?? null, expectedReleaseDate: release?.expectedReleaseDate ?? null, week: monday.toISOString().slice(0, 10), stale: now.getTime() - date.getTime() >= 7 * 86400000 };
   });
 }
 
