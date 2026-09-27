@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.3
+
+- Add web app manifest for proper iOS/Android home screen icon support.
+- Link manifest in app metadata for improved PWA compatibility.
+
 ## 0.1.2
 
 - Add Reading Shelf: save Dashboard and Discover recommendations without following or downloading them, then send a saved series to Kapowarr when ready.
