@@ -35,9 +35,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en" className={playfair.variable}>
       <body data-attention-count={attentionCount}>
         <ToastProvider>
-          <TopBar />
+          <TopBar attentionCount={attentionCount} />
           {children}
-          <TabBar />
+          <TabBar attentionCount={attentionCount} />
         </ToastProvider>
       </body>
     </html>
