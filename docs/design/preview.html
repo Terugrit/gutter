@@ -198,6 +198,31 @@ dl.meta dd{margin:0}
   .tabbar :focus-visible{outline-color:#fff}
 }
 @media (max-width:420px){.detail .cv{width:64%}.stats b{font-size:2.6rem}}
+.shelf-actions{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:auto;padding-top:8px}
+.rec-actions{display:flex;align-items:center;gap:4px 10px;flex-wrap:wrap}
+.rec-actions button{min-height:44px}
+.rec-actions .lnk{background:none;border:0;padding:8px 0;font-size:13px;font-weight:500;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.strip figcaption .rec-actions{margin-top:auto;padding-top:10px}
+.strip figcaption .rec-actions button{margin-top:0;font-size:12px}
+.drow .rec-actions{justify-self:end}
+.shelf-actions .lnk{background:none;border:0;padding:8px 0;font-size:13px;font-weight:500;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.shelf-actions .lnk:disabled{cursor:default;color:var(--muted)}
+.shelf-actions .lnk{min-height:44px}
+.coming-actions{display:flex;align-items:center;flex-wrap:wrap;gap:4px 12px;margin-top:auto;padding-top:10px}
+.coming-actions select{max-width:100%;border:0;border-bottom:1px solid var(--rule);background:transparent;color:var(--text);font:inherit;font-size:12px;padding:6px 0}
+.coming-actions .lnk{margin-top:0}
+.coming-tools{margin-top:18px;border-top:1px solid var(--rule);padding-top:12px}
+.coming-tools summary{cursor:pointer;font-size:13px;font-weight:500}
+.coming-tools .row .t small{display:block;color:var(--muted);font-size:13px}
+.release-row{grid-template-columns:44px 48px minmax(0,1fr) auto;min-height:76px}
+.release-row .thumb{display:block;width:40px;aspect-ratio:2/3}
+.release-row .thumb .cv{width:100%;height:100%}
+.release-actions{display:flex;align-items:center;justify-content:flex-end;gap:16px;font-size:13px;font-weight:500}
+.release-actions .lnk{background:none;border:0;padding:8px 0;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.shelf-week+.shelf-week{margin-top:22px}
+@media (max-width:1023px){.tabbar a{padding:12px 8px;min-width:44px;text-align:center}}
+@media (max-width:420px){.tabbar{width:calc(100% - 16px);overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;-webkit-overflow-scrolling:touch}.tabbar::-webkit-scrollbar{display:none}.tabbar a{flex:none;min-height:44px}}
+@media (max-width:1023px){.drow .rec-actions{grid-column:3;justify-self:start;padding-bottom:8px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
 
 /* M02: series collection progress */
@@ -223,6 +248,7 @@ dl.meta dd{margin:0}
     <span class="brand">Comic tracker</span>
     <a href="#/dashboard" data-v="dashboard">Dashboard</a>
     <span class="nav-entry"><a href="#/library" data-v="library">Library</a><a class="attention-badge" href="#/library/attention" aria-label="1 series needs a match">1</a></span>
+    <a href="#/shelf" data-v="shelf">Shelf</a>
     <a href="#/notifications" data-v="notifications">Notifications</a>
     <a href="#/discover" data-v="discover">Discover</a>
     <a href="#/settings" data-v="settings">Settings</a>
@@ -234,6 +260,7 @@ dl.meta dd{margin:0}
 <nav class="tabbar" id="tabbar" aria-label="Main">
   <a href="#/dashboard" data-v="dashboard">Dashboard</a>
   <a href="#/library/attention" data-v="library">Library<span class="attention-badge" aria-label="1 series needs a match">1</span></a>
+  <a href="#/shelf" data-v="shelf">Shelf</a>
   <a href="#/notifications" data-v="notifications">Notifications<i class="ud" id="tabdot" hidden></i></a>
   <a href="#/discover" data-v="discover">Discover</a>
   <a href="#/settings" data-v="settings">Settings</a>
@@ -281,7 +308,7 @@ const REC_LIB=[['Lantern Row','Lamplight Comics','Same writer as Night Signal'],
 const REC_RND=[['Moss Kingdom','Tin Roof','Picked at random'],['The Clockwork Ferry','Harbor Press','Picked at random'],['Nightshift Saints','Marrow & Co','Picked at random'],['Sundial','Lamplight Comics','Picked at random'],['Hush Protocol','Quiet Engine','Picked at random'],['Paper Moon Motel','Tin Roof','Picked at random'],['The Fifth Season Club','Northfield','Picked at random'],['Tidewrack','Harbor Press','Picked at random'],['Copperhead Lane','Marrow & Co','Picked at random'],['Bright Machines','Lamplight Comics','Picked at random']];
 const LIB=['Night Signal','The Salt Line','Hollow Crown','Paper Tigers','Low Tide','Ash & Ember','Copper Sky','Velvet Static','The Long Orbit','Wren Street','Iron Lantern','Small Harbors','Glass Meridian','Tin Saints','Moth & Lantern','The Understudy','Field Notes from Nowhere','Salt Road'].map((t,k)=>({id:k,t,seed:k+1,pub:['Harbor Press','Lamplight Comics','Northfield','Tin Roof','Marrow & Co','Quiet Engine'][k%6],fol:k<7,attention:k===2,sel:false}));
 const SERVICES=[['Komga','http://komga:25600'],['Metron','metron.cloud'],['ComicVine','comicvine.gamespot.com'],['Kapowarr','http://kapowarr:5656'],['ntfy','http://ntfy:80/comics']];
-const ui={onlyUnread:false,q:'',onlyFollowed:false,follow:{},keyboardRow:-1,suggestionDismissed:{}};
+const ui={onlyUnread:false,q:'',onlyFollowed:false,follow:{},shelf:{},shelfFilter:'all',keyboardRow:-1,suggestionDismissed:{}};
 const SUGGESTIONS=[LIB[8],LIB[9],LIB[10],LIB[11]];
 
 /* ---------- pieces ---------- */
@@ -317,10 +344,12 @@ function detail(n){
     <div class="dock" role="group" aria-label="Actions">
       <button class="btn primary" data-kap="${n.id}" ${n.kap!=='idle'?'disabled':''}>${kapLabel(n.kap)}</button>
       <button class="btn" data-unread="${n.id}">Mark unread</button>
+      <button class="btn" data-delete="${n.id}">Delete</button>
     </div>`;
 }
 function summary(){
   const newest=N[0];
+  if(!newest)return `${headline(['Nothing new'])}<p class="desc"><a href="#/library">Browse your library</a></p>`;
   return `${headline([unread()+' unread',N.length+' notifications','Since 26 Aug'])}
     <div class="detail"><div class="cv">${cover(newest.seed,newest.s,newest.i)}</div>
     <div><p class="desc" style="margin-top:0">Select a notification on the left to see the issue, its creators and a shortcut to Kapowarr.</p></div></div>`;
@@ -334,7 +363,7 @@ notifications(arg){
   const list=N.filter(n=>!ui.onlyUnread||n.u||n.id===id);
   return `<div class="split ${sel?'has-sel':''}">
     <aside class="index" aria-label="Notifications">
-      <div class="filters"><button aria-pressed="${ui.onlyUnread}" data-act="unread-only">Unread only</button></div>
+      <div class="filters"><button aria-pressed="${ui.onlyUnread}" data-act="unread-only">Unread only</button><button data-act="clear-notifications" ${N.length?'':'disabled'}>Clear all</button></div>
       <div class="idx-head"><span>No.</span><span>Notification</span><span></span></div>
       ${list.map(n=>row(n,n.id===id)).join('')}
     </aside>
@@ -342,15 +371,16 @@ notifications(arg){
 },
 dashboard(){
   const miss=MISSING.map((m,k)=>`<div class="row ${ui.keyboardRow===k?'sel':''}" ${ui.keyboardRow===k?'aria-current="true"':''}><span class="num">${pad(k+1)}</span><span class="t">${esc(m.s)} #${m.i} <span class="muted">/ ${m.d}</span></span><button class="lnk" data-mkap="${m.id}" ${m.kap!=='idle'?'disabled':''}>${kapLabel(m.kap)}</button></div>`).join('');
-  const strip=(a,off)=>`<div class="strip">${a.slice(0,10).map((r,k)=>`<figure><div class="cv">${cover(k+off,r[0])}</div><figcaption>${esc(r[0])}<span>${esc(r[2])}</span><button data-follow="${esc(r[0])}">${ui.follow[r[0]]?'Following':'Follow'}</button></figcaption></figure>`).join('')}</div>`;
+  const strip=(a,off)=>`<div class="strip">${a.slice(0,10).map((r,k)=>`<figure><div class="cv">${cover(k+off,r[0])}</div><figcaption>${esc(r[0])}<span>${esc(r[2])}</span><div class="rec-actions"><button data-follow="${esc(r[0])}">${ui.follow[r[0]]?'Following':'Follow'}</button><button data-save="${esc(r[0])}" ${ui.shelf[r[0]]?'disabled':''}>${ui.shelf[r[0]]?'On shelf':'Save to shelf'}</button><button data-download="${esc(r[0])}">Download volume</button></div></figcaption></figure>`).join('')}</div>`;
   return `<div class="page">
     ${headline([N.filter(n=>n.d==='16 Sep 2026').length+' new issues',MISSING.length+' missing','128 books read'])}
+    <section class="sec"><header><h2>Reading</h2><a href="#/recap">View reading recap</a></header>
+      <div class="stats"><div class="stat"><b>128</b><span>Books read</span></div><div class="stat"><b>6</b><span>In progress</span></div><div class="stat"><b>14</b><span>Series completed</span></div><div class="stat"><b>9</b><span>Read this month</span></div></div></section>
     <section class="sec"><header><h2>Missing issues</h2><a href="#/library">Manage followed series</a></header>${miss}</section>
-    <section class="sec"><header><h2>Coming up</h2></header><div class="upcoming-week"><p class="week-label">Week of 5 Oct</p><div class="strip"><figure><a href="#/series/1"><div class="cv">${cover(1087,'Night Signal',15)}</div></a><figcaption>Night Signal #15<small class="moved-tag" title="Moved from 2026-09-23">moved</small><span>2026-10-07 / The new signal</span></figcaption></figure></div></div></section>
+    <section class="sec"><header><h2>Coming up: Followed Series</h2></header><div class="strip"><figure><a href="#/series/1"><div class="cv">${cover(1087,'Night Signal',15)}</div></a><figcaption>Night Signal #15<small class="moved-tag" title="Moved from 2026-09-23">moved</small><span>2026-10-07 / The new signal</span></figcaption></figure></div></section>
+    <section class="sec"><header><h2>Coming Soon</h2><span class="muted">30–45 days</span></header><div class="strip">${[['Glass Meridian','1','4 Nov 2026','Harbor Press','solicited'],['Far Shore','3','11 Nov 2026','Northfield','solicited / wildcard pick']].map((r,k)=>`<figure><div class="cv">${cover(k+21,r[0],r[1])}</div><figcaption>${r[0]} #${r[1]}<span>${r[2]} / ${r[3]}</span><span>${r[4]}</span><div class="coming-actions"><select aria-label="Follow scope for ${r[0]}"><option>This issue</option><option>This series</option></select><button>Follow</button><button>Not interested</button></div></figcaption></figure>`).join('')}</div><details class="coming-tools"><summary class="lnk">Look something up or manage filters</summary></details></section>
     <section class="sec"><header><h2>Recommended for you</h2><a href="#/discover">See all</a></header>${strip(REC_LIB,2)}</section>
     <section class="sec"><header><h2>Something different</h2><a href="#/discover">See all</a></header>${strip(REC_RND,5)}</section>
-     <section class="sec"><header><h2>Reading</h2><a href="#/recap">View reading recap</a></header>
-      <div class="stats"><div class="stat"><b>128</b><span>Books read</span></div><div class="stat"><b>6</b><span>In progress</span></div><div class="stat"><b>14</b><span>Series completed</span></div><div class="stat"><b>9</b><span>Read this month</span></div></div></section>
     <p class="foot">Sample data for the design preview. Covers are generated placeholders.</p></div>`;
 },
 library(){
@@ -366,10 +396,15 @@ library(){
     ${n?`<div class="dock fixed" role="group" aria-label="Selection actions"><button class="btn primary" data-act="follow-sel">Follow ${n} series</button><button class="btn" data-act="clear-sel">Clear</button></div>`:''}
     </div>`;
 },
+shelf(){
+  const all=Object.entries(ui.shelf).filter(([,state])=>state),shown=all.filter(([,state])=>ui.shelfFilter==='all'||(ui.shelfFilter==='sent')===Boolean(state.sent));
+  const cards=shown.map(([title,state],k)=>{const r=[...REC_LIB,...REC_RND].find(x=>x[0]===title),publisher=r?.[1]||'Unknown publisher';return `<div><div class="item"><div class="cv">${cover(k+2,title)}</div><div class="cap">${esc(title)}<small>Year began: ${state.year||'Year unknown'}</small><small>${esc(publisher)}</small></div></div><div class="shelf-actions"><button class="lnk" data-shelf-send="${esc(title)}" ${state.sent?'disabled':''}>${state.sent?'Sent to Kapowarr':'Send to Kapowarr'}</button><button class="lnk" data-shelf-remove="${esc(title)}">Remove from shelf</button></div></div>`}).join('');
+  return `<div class="page"><h1 class="title">Reading shelf</h1><p class="muted">Watched releases arrive here when they are due and leave after Kapowarr finishes. Saved series stay below until you remove them.</p><section class="sec"><header><h2>Released for you</h2></header><div class="shelf-week"><p class="week-label">This week</p><div class="row drow release-row"><span class="num">01</span><span class="thumb"><span class="cv">${cover(31,'Glass Meridian','1')}</span></span><span class="t">Glass Meridian #1<small>Added 27 Sep 2026 / downloading</small></span><span class="release-actions"><a class="lnk" href="#/shelf">Open Kapowarr</a><button class="lnk">Clear</button></span></div></div></section><section class="sec"><header><h2>Saved series</h2></header>${all.length?`<div class="tools"><button data-shelf-filter="all" aria-pressed="${ui.shelfFilter==='all'}">All</button><button data-shelf-filter="saved" aria-pressed="${ui.shelfFilter==='saved'}">Saved</button><button data-shelf-filter="sent" aria-pressed="${ui.shelfFilter==='sent'}">Sent to Kapowarr</button></div><div class="grid">${cards}</div>${shown.length?'':'<p class="muted">No series in this view.</p>'}`:'<h2 class="title">Your saved shelf is empty.</h2><a class="lnk" href="#/discover">Browse Discover</a>'}</section></div>`;
+},
 discover(){
   const list=(a,off)=>a.map((r,k)=>`<div class="row drow" data-prev="${k+off}|${esc(r[0])}"><span class="num">${pad(k+1)}</span><span class="thumb">${cover(k+off,r[0])}</span>
      <span class="t">${esc(r[0])} <span class="muted">/ ${esc(r[1])}</span><small>${esc(r[2])}</small></span>
-    <button class="lnk" data-follow="${esc(r[0])}">${ui.follow[r[0]]?'Following':'Follow'}</button></div>`).join('');
+    <div class="rec-actions"><button class="lnk" data-follow="${esc(r[0])}">${ui.follow[r[0]]?'Following':'Follow'}</button><button class="lnk" data-save="${esc(r[0])}" ${ui.shelf[r[0]]?'disabled':''}>${ui.shelf[r[0]]?'On shelf':'Save to shelf'}</button><button class="lnk" data-download="${esc(r[0])}">Download volume</button></div></div>`).join('');
   return `<div class="page"><h1 class="title">Discover</h1>
     <div class="disc"><div>
       <section class="sec" style="margin-top:24px"><header><h2>Recommended for you</h2><button data-act="refresh">Refresh</button></header>${list(REC_LIB,2)}</section>
@@ -405,6 +440,7 @@ function render(){
   const st=$('.stage');if(st)st.scrollTop=0;
   if(v==='notifications'&&!arg)main.scrollTop=0;
   document.querySelectorAll('[data-v]').forEach(a=>{a.getAttribute('data-v')===v?a.setAttribute('aria-current','page'):a.removeAttribute('aria-current')});
+  const tab=$('#tabbar'),active=tab.querySelector('[aria-current="page"]');if(active&&tab.scrollWidth>tab.clientWidth)tab.scrollLeft=active.offsetLeft-(tab.clientWidth-active.clientWidth)/2;
   $('#tabdot').hidden=!unread();
   lastView=v;
 }
@@ -417,14 +453,20 @@ function kap(obj,rerender){
   setTimeout(()=>{obj.kap='done';toast('Sent to Kapowarr');render()},1100);
 }
 document.addEventListener('click',e=>{
-  const b=e.target.closest('[data-kap],[data-mkap],[data-unread],[data-act],[data-lib],[data-follow],[data-test],[data-suggest-follow],[data-suggest-dismiss]');if(!b)return;
+  const b=e.target.closest('[data-kap],[data-mkap],[data-unread],[data-delete],[data-act],[data-lib],[data-follow],[data-save],[data-download],[data-shelf-send],[data-shelf-remove],[data-shelf-filter],[data-test],[data-suggest-follow],[data-suggest-dismiss]');if(!b)return;
   if(b.dataset.kap)kap(N.find(n=>n.id==b.dataset.kap));
   else if(b.dataset.mkap)kap(MISSING.find(m=>m.id===b.dataset.mkap));
   else if(b.dataset.unread){const n=N.find(n=>n.id==b.dataset.unread);n.u=1;$('#tabdot').hidden=false;b.textContent='Marked unread';b.disabled=true;toast('Marked unread')}
+  else if(b.dataset.delete){const i=N.findIndex(n=>n.id==b.dataset.delete);N.splice(i,1);toast('Notification deleted');location.hash=N[i]?`#/notifications/${N[i].id}`:N[i-1]?`#/notifications/${N[i-1].id}`:'#/notifications';render()}
   else if(b.dataset.suggestDismiss){ui.suggestionDismissed[b.dataset.suggestDismiss]=true;render()}
   else if(b.dataset.suggestFollow){const x=LIB[+b.dataset.suggestFollow];x.fol=true;toast('Following '+x.t);render()}
   else if(b.dataset.lib){const x=LIB[+b.dataset.lib];x.sel=!x.sel;render()}
   else if(b.dataset.follow){const t=b.dataset.follow;ui.follow[t]=!ui.follow[t];toast(ui.follow[t]?'Following '+t:'Unfollowed '+t);render()}
+  else if(b.dataset.save){const t=b.dataset.save;ui.shelf[t]={year:2024,sent:false};toast('Saved to shelf');render()}
+  else if(b.dataset.download){ui.follow[b.dataset.download]=true;toast('Sent to Kapowarr');render()}
+  else if(b.dataset.shelfSend){ui.shelf[b.dataset.shelfSend].sent=true;ui.follow[b.dataset.shelfSend]=true;toast('Sent to Kapowarr');render()}
+  else if(b.dataset.shelfRemove){delete ui.shelf[b.dataset.shelfRemove];toast('Removed from shelf');render()}
+  else if(b.dataset.shelfFilter){ui.shelfFilter=b.dataset.shelfFilter;render()}
   else if(b.dataset.test){const k=b.dataset.test,s=$(`[data-st="${k}"]`);s.textContent='Testing\u2026';setTimeout(()=>{s.textContent='\u25CF Connected'},800)}
   else{
     const a=b.dataset.act;
@@ -435,6 +477,7 @@ document.addEventListener('click',e=>{
     if(a==='issue-skip'){ui.issueSkipped=!ui.issueSkipped;render()}
     if(a.startsWith('progress-')){ui.progressState=a.slice(9);render()}
     if(a==='unread-only'){ui.onlyUnread=!ui.onlyUnread;render()}
+    if(a==='clear-notifications'){N.splice(0);location.hash='#/notifications';toast('All notifications cleared');render()}
     if(a==='followed-only'){ui.onlyFollowed=!ui.onlyFollowed;render()}
     if(a==='follow-sel'){const c=LIB.filter(x=>x.sel);c.forEach(x=>{x.fol=true;x.sel=false});toast('Following '+c.length+' series');render()}
     if(a==='clear-sel'){LIB.forEach(x=>x.sel=false);render()}

@@ -123,7 +123,8 @@ dl.meta dd{margin:0}
 .row:hover .moved-from,.row:focus-visible .moved-from{display:inline}
 .strip figcaption .rec-actions{margin-top:auto;padding-top:10px}
 .strip figcaption .rec-actions button{margin-top:0;font-size:12px}
-.rec-actions{display:flex;align-items:center;gap:10px;white-space:nowrap}
+.rec-actions{display:flex;align-items:center;gap:4px 10px;flex-wrap:wrap}
+.rec-actions button{min-height:44px}
 .rec-actions .lnk{background:none;border:0;padding:8px 0;font-size:13px;font-weight:500;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 .rec-actions button:disabled{cursor:default}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:24px}
@@ -210,6 +211,24 @@ dl.meta dd{margin:0}
   .tabbar :focus-visible{outline-color:#fff}
 }
 @media (max-width:420px){.detail .cv{width:64%}.stats b{font-size:2.6rem}}
+.shelf-actions{display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:auto;padding-top:8px}
+.shelf-actions .lnk{background:none;border:0;padding:8px 0;font-size:13px;font-weight:500;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.shelf-actions .lnk:disabled{cursor:default;color:var(--muted)}
+.shelf-actions .lnk{min-height:44px}
+.coming-actions{display:flex;align-items:center;flex-wrap:wrap;gap:4px 12px;margin-top:auto;padding-top:10px}
+.coming-actions select{max-width:100%;border:0;border-bottom:1px solid var(--rule);background:transparent;color:var(--text);font:inherit;font-size:12px;padding:6px 0}
+.coming-actions .lnk{margin-top:0}
+.coming-tools{margin-top:18px;border-top:1px solid var(--rule);padding-top:12px}
+.coming-tools summary{cursor:pointer;font-size:13px;font-weight:500}
+.coming-tools .row .t small{display:block;color:var(--muted);font-size:13px}
+.release-row{grid-template-columns:44px 48px minmax(0,1fr) auto;min-height:76px}
+.release-row .thumb{display:block;width:40px;aspect-ratio:2/3}
+.release-row .thumb .cv{width:100%;height:100%}
+.release-actions{display:flex;align-items:center;justify-content:flex-end;gap:16px;font-size:13px;font-weight:500}
+.release-actions .lnk{background:none;border:0;padding:8px 0;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.shelf-week+.shelf-week{margin-top:22px}
+@media (max-width:1023px){.tabbar a{padding:12px 8px;min-width:44px;text-align:center}}
+@media (max-width:420px){.tabbar{width:calc(100% - 16px);overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;-webkit-overflow-scrolling:touch}.tabbar::-webkit-scrollbar{display:none}.tabbar a{flex:none;min-height:44px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
 
 /* Series management reuses the index and library link styles. */

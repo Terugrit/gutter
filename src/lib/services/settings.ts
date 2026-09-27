@@ -32,7 +32,7 @@ export async function saveSelectedKomgaLibrary(library: SelectedKomgaLibrary) {
   await db.insert(kvCache).values({ key: "settings:komga-library", valueJson: JSON.stringify(library), fetchedAt, ttlSeconds: 365 * 24 * 60 * 60 }).onConflictDoUpdate({ target: kvCache.key, set: { valueJson: JSON.stringify(library), fetchedAt, ttlSeconds: 365 * 24 * 60 * 60 } });
 }
 export async function getOperations() {
-  const names = ["sync-komga", "scan-komga", "refresh-releases", "weekly-digest", "refresh-discover", "backup-db", "check-kapowarr"] as const;
+  const names = ["sync-komga", "scan-komga", "refresh-releases", "weekly-digest", "refresh-discover", "backup-db", "check-kapowarr", "refresh-upcoming-releases", "check-release-dates", "tune-interest-weights"] as const;
   const statuses = await Promise.all(names.map(async (name) => {
     const row = (await db.select().from(kvCache).where(eq(kvCache.key, `job:${name}`)))[0];
     try { return [name, row ? JSON.parse(row.valueJson) : null] as const; } catch { return [name, null] as const; }

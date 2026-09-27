@@ -5,7 +5,7 @@ if (!process.env.GUTTER_VISUAL_TEST) throw new Error("Visual seed only runs in t
 const sqlite = new Database(env.GUTTER_DB_PATH);
 const now = new Date().toISOString();
 const utcDate = (value: string) => { const [day, month, year] = value.split(" "); const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]; return `${year}-${String(months.indexOf(month) + 1).padStart(2, "0")}-${day.padStart(2, "0")}`; };
-sqlite.exec("DELETE FROM notifications; DELETE FROM issues; DELETE FROM followed_series; DELETE FROM kv_cache; DELETE FROM sqlite_sequence;");
+sqlite.exec("DELETE FROM release_shelf; DELETE FROM watches; DELETE FROM upcoming_releases; DELETE FROM dismissed_series; DELETE FROM interest_filters; DELETE FROM interest_weights; DELETE FROM notifications; DELETE FROM issues; DELETE FROM followed_series; DELETE FROM reading_shelf; DELETE FROM kv_cache; DELETE FROM sqlite_sequence;");
 const series = sample.library.map((item) => ({ id: `visual:${item.id}`, t: item.t, pub: item.pub, seed: item.seed, thumbnail: "" }));
 const putCache = sqlite.prepare("INSERT INTO kv_cache (key,value_json,fetched_at,ttl_seconds) VALUES (?,?,?,?)");
 putCache.run("komga:series", JSON.stringify(series), now, 86400);
@@ -29,8 +29,12 @@ for (const [index, item] of sample.missing.entries()) {
   const id = 100 + index; const follow = ensureFollow(item.s, "Unknown publisher");
   issue.run(id, id, follow, String(item.i), null, utcDate(item.d), null, null, 0, now);
 }
-const recommendations = { recommended: sample.recommendedForYou.map((item, index) => ({ id: 2000 + index, title: item.title, publisher: item.publisher, reason: item.reason, coverUrl: "" })), different: sample.somethingDifferent.map((item, index) => ({ id: 3000 + index, title: item.title, publisher: item.publisher, reason: item.reason, coverUrl: "" })) };
+const recommendations = { recommended: sample.recommendedForYou.map((item, index) => ({ id: 2000 + index, title: item.title, publisher: item.publisher, yearBegan: 2024 - index, reason: item.reason, coverUrl: "" })), different: sample.somethingDifferent.map((item, index) => ({ id: 3000 + index, title: item.title, publisher: item.publisher, yearBegan: 2019 + index, reason: item.reason, coverUrl: "" })) };
 putCache.run("discover:recommendations", JSON.stringify(recommendations), now, 86400);
+const upcoming = sqlite.prepare("INSERT INTO upcoming_releases (metron_issue_id,metron_series_id,series_name,issue_number,publisher,genres_json,cover_url,expected_release_date,release_confidence,is_wildcard,source,last_refreshed_at) VALUES (?,?,?,?,?,?,?,?,?,0,'metron',?)");
+for (const [index, title, publisher, genre] of [[0, "Glass Meridian", "Harbor Press", "Mystery"], [1, "Paper Moon", "Harbor Press", "Science fiction"], [2, "Last Orchard", "Lamplight Comics", "Fantasy"], [3, "Far Shore", "Northfield", "Adventure"], [4, "Signal House", "Harbor Press", "Mystery"], [5, "Quiet Engine", "Independent", "Drama"]] as const) {
+  upcoming.run(5000 + index, 6000 + index, title, String(index + 1), publisher, JSON.stringify([genre]), null, `2026-11-${String(2 + index).padStart(2, "0")}`, "solicited", now);
+}
 sqlite.close();
 
 

@@ -9,10 +9,12 @@ test.beforeEach(() => {
   sqlite.prepare("DELETE FROM kv_cache WHERE key IN ('job:scan-komga', 'settings:komga-library')").run();
   sqlite.prepare("DELETE FROM kv_cache WHERE key LIKE 'kapowarr:status:%'").run();
   sqlite.prepare("DELETE FROM kv_cache WHERE key = 'follow-suggestions:dismissed'").run();
+  sqlite.prepare("DELETE FROM reading_shelf").run();
+  sqlite.exec("DELETE FROM release_shelf; DELETE FROM watches; DELETE FROM dismissed_series; DELETE FROM interest_filters; DELETE FROM interest_weights;");
   sqlite.exec("DELETE FROM issues WHERE followed_series_id IN (SELECT id FROM followed_series WHERE komga_series_id='visual:m02'); DELETE FROM followed_series WHERE komga_series_id='visual:m02';");
   sqlite.exec("DELETE FROM issues WHERE followed_series_id IN (SELECT id FROM followed_series WHERE komga_series_id='visual:m04'); DELETE FROM followed_series WHERE komga_series_id='visual:m04';");
   sqlite.prepare("DELETE FROM followed_series WHERE komga_series_id = ?").run("visual:12");
-  const setRead = sqlite.prepare("UPDATE notifications SET read_at = ? WHERE id = ?");
+  const setRead = sqlite.prepare("UPDATE notifications SET read_at = ?, deleted_at = NULL WHERE id = ?");
   for (const item of sample.notifications) setRead.run(item.u ? null : "2026-09-20T00:00:00Z", item.id);
   sqlite.close();
 });
@@ -50,6 +52,74 @@ test("Settings requests a Komga file scan separately from library sync", async (
   await expect(page.locator("section").filter({ has: page.getByRole("heading", { name: "Komga library" }) }).getByRole("status")).toContainText("Komga file scan requested");
 });
 const shot = async (page: import("@playwright/test").Page, name: string) => { await page.locator("#clock").evaluate((element) => { element.textContent = ""; }); await expect(page).toHaveScreenshot(`${name}.png`, { maxDiffPixelRatio: 0.02 }); };
+
+test("shelf saves recommendations from both pages without following", async ({ page }) => {
+  await page.setViewportSize(desktop);
+  await page.goto("/");
+  await page.getByRole("button", { name: "Save to shelf" }).first().click();
+  await expect(page.getByRole("button", { name: "On shelf" }).first()).toBeDisabled();
+  await page.goto("/discover");
+  await page.getByRole("button", { name: "Save to shelf" }).nth(1).click();
+  await expect(page.getByRole("button", { name: "On shelf" })).toHaveCount(2);
+  const sqlite = new Database(resolve("data/visual-test.db"));
+  expect((sqlite.prepare("SELECT COUNT(*) AS count FROM reading_shelf").get() as { count: number }).count).toBe(2);
+  expect((sqlite.prepare("SELECT COUNT(*) AS count FROM followed_series WHERE metron_series_id BETWEEN 2000 AND 3009").get() as { count: number }).count).toBe(0);
+  sqlite.close();
+  await page.goto("/shelf");
+  await expect(page.locator(".grid > div")).toHaveCount(2);
+  await expect(page.locator(".grid .cap small").first()).toContainText("Year began:");
+  await shot(page, "desktop-shelf");
+  await page.setViewportSize(mobile);
+  await shot(page, "mobile-shelf");
+  await page.getByRole("button", { name: "Sent to Kapowarr" }).click();
+  await expect(page.getByText("No series in this view.")).toBeVisible();
+  await page.getByRole("button", { name: "All", exact: true }).click();
+  await page.getByRole("button", { name: "Remove from shelf" }).first().click();
+  await expect(page.locator(".grid > div")).toHaveCount(1);
+});
+
+test("empty shelf has a Discover link", async ({ page }) => {
+  await page.setViewportSize(desktop);
+  await page.goto("/shelf");
+  await expect(page.getByRole("link", { name: "Browse Discover" })).toBeVisible();
+  await shot(page, "desktop-shelf-empty");
+  await page.setViewportSize(mobile);
+  await shot(page, "mobile-shelf-empty");
+});
+
+test("released watch shelf groups status and stale state", async ({ page }) => {
+  const browserErrors: string[] = [];
+  page.on("console", (message) => { if (message.type() === "error") browserErrors.push(message.text()); });
+  page.on("pageerror", (error) => browserErrors.push(error.message));
+  const sqlite = new Database(resolve("data/visual-test.db"));
+  const release = sqlite.prepare("SELECT id FROM upcoming_releases ORDER BY id LIMIT 1").get() as { id: number };
+  const watch = sqlite.prepare("INSERT INTO watches (upcoming_release_id,status,scope,outcome,created_at) VALUES (?,'released','series','pending','2026-08-01T00:00:00Z')").run(release.id);
+  sqlite.prepare("INSERT INTO release_shelf (watch_id,series_name,issue_number,kapowarr_link,status,added_at) VALUES (?,?,?,'http://kapowarr.test/volumes/9','downloading','2026-09-01T00:00:00Z')").run(watch.lastInsertRowid, "Glass Meridian", "1");
+  sqlite.close();
+  await page.setViewportSize(desktop);
+  await page.goto("/shelf");
+  await expect(page.getByText("Glass Meridian #1")).toBeVisible();
+  await expect(page.getByText("stale")).toBeVisible();
+  await shot(page, "desktop-shelf-released");
+  await page.setViewportSize(mobile);
+  await shot(page, "mobile-shelf-released");
+  expect(browserErrors).toEqual([]);
+});
+
+test("narrow phone navigation scrolls to the active page", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await page.goto("/settings");
+  const nav = page.getByRole("navigation", { name: "Main" }).last();
+  await page.evaluate(() => document.fonts.ready);
+  await expect.poll(() => nav.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
+  await expect.poll(() => nav.evaluate((element) => {
+    const active = element.querySelector('[aria-current="page"]')!.getBoundingClientRect();
+    const frame = element.getBoundingClientRect();
+    return active.left >= frame.left && active.right <= frame.right;
+  })).toBe(true);
+  await nav.getByRole("link", { name: "Shelf" }).click();
+  await expect(page).toHaveURL(/\/shelf$/);
+});
 function seedProgress(state: "incomplete" | "up-to-date" | "complete") {
   const sqlite = new Database(resolve("data/visual-test.db"));
   const follow = sqlite.prepare("INSERT INTO followed_series (komga_series_id,title,publisher,match_status,monitor_mode,series_status,created_at) VALUES ('visual:m02','Night Signal','Harbor Press','confirmed','all',?,'2020-01-01T00:00:00Z')").run(state === "complete" ? "completed" : "ongoing");
@@ -120,9 +190,9 @@ test("coming-up dashboard strip on desktop and mobile", async ({ page }) => {
   sqlite.close();
   await page.setViewportSize(desktop);
   await page.goto("/");
-  await expect(page.locator(".upcoming-week figure")).toHaveCount(1);
-  await expect(page.locator(".upcoming-week .moved-tag")).toHaveText("moved");
-  const normalise = async () => { await page.locator(".week-label").evaluate((element) => { element.textContent = "Week of 5 Oct"; }); await page.locator(".upcoming-week figcaption span").evaluate((element) => { element.textContent = "2026-10-07 / The new signal"; }); await page.locator("nextjs-portal").evaluateAll((elements) => elements.forEach((element) => element.remove())); await page.locator(".upcoming-week").scrollIntoViewIfNeeded(); };
+  await expect(page.locator(".sec").filter({ has: page.getByRole("heading", { name: "Coming up: Followed Series" }) }).locator("figure")).toHaveCount(1);
+  await expect(page.locator(".moved-tag")).toHaveText("moved");
+  const normalise = async () => { await page.locator(".strip figcaption span").filter({ hasText: "The new signal" }).evaluate((element) => { element.textContent = "2026-10-07 / The new signal"; }); await page.locator("nextjs-portal").evaluateAll((elements) => elements.forEach((element) => element.remove())); await expect(async () => { await page.locator(".sec").filter({ has: page.getByRole("heading", { name: "Coming up: Followed Series" }) }).scrollIntoViewIfNeeded(); }).toPass({ timeout: 5_000 }); };
   await normalise();
   await shot(page, "desktop-dashboard-coming-up");
   await page.setViewportSize(mobile);
@@ -256,6 +326,19 @@ test("keyboard list navigation and search typing", async ({ page }) => {
   await page.getByRole("searchbox", { name: "Search your library" }).fill("j");
   await expect(page.getByRole("searchbox", { name: "Search your library" })).toHaveValue("j");
   await expect(page).toHaveURL(/\/library$/);
+});
+
+test("deletes one notification and clears the remaining notification list", async ({ page }) => {
+  await page.setViewportSize(desktop);
+  await page.goto("/notifications/2");
+  await page.getByRole("button", { name: "Delete", exact: true }).click();
+  await expect(page).toHaveURL(/\/notifications\/1$/);
+  await expect(page.locator('.index .row[href="/notifications/2"]')).toHaveCount(0);
+  await expect(page.getByText("Notification deleted", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Clear all", exact: true }).click();
+  await expect(page).toHaveURL(/\/notifications$/);
+  await expect(page.locator(".index .row")).toHaveCount(0);
+  await expect(page.getByText("No notifications to show.", { exact: true })).toBeVisible();
 });
 
 test("mobile Escape returns to the notification list", async ({ page }) => {

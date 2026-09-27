@@ -4,6 +4,7 @@ import { metronCreatorSchema, metronIssueSchema, metronPageSchema, metronSeriesS
 
 type Options = { username: string; password: string; baseUrl?: string; fetch?: typeof fetch };
 export type SeriesSearch = { name?: string; publisher?: string; year?: number; comicVineId?: number; creatorId?: number; maxPages?: number };
+export type IssueSearch = { storeDateAfter: string; storeDateBefore: string; publisher?: string; maxPages?: number };
 
 export class MetronClient {
   private readonly fetcher: typeof fetch;
@@ -47,6 +48,20 @@ export class MetronClient {
   async getSeries(id: number): Promise<MetronSeries> { return this.get(`series/${id}/`, metronSeriesDetailSchema); }
   async searchCreators(name: string): Promise<MetronCreator[]> { return (await this.get("creator/", metronPageSchema(metronCreatorSchema), { name })).results; }
   async getIssue(id: number): Promise<MetronIssue> { return this.get(`issue/${id}/`, metronIssueSchema); }
+  async searchIssues(search: IssueSearch): Promise<MetronIssue[]> {
+    const results: MetronIssue[] = [];
+    for (let page = 1; page <= (search.maxPages ?? 5); page += 1) {
+      const response = await this.get("issue/", metronPageSchema(metronIssueSchema), {
+        store_date_range_after: search.storeDateAfter,
+        store_date_range_before: search.storeDateBefore,
+        publisher_name: search.publisher,
+        page,
+      });
+      results.push(...response.results.filter((issue) => !issue.series?.language || issue.series.language === "en"));
+      if (!response.next) break;
+    }
+    return results;
+  }
   async listIssues(seriesId: number, maxPages = Number.POSITIVE_INFINITY): Promise<MetronIssue[]> {
     const results: MetronIssue[] = [];
     for (let page = 1; page <= maxPages; page += 1) {

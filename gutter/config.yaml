@@ -1,5 +1,5 @@
 name: Gutter
-version: "0.1.1"
+version: "0.1.2"
 slug: gutter
 description: Follow comic releases from Komga and send missing issues to Kapowarr
 url: https://github.com/terugrit/gutter

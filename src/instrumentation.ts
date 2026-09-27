@@ -7,6 +7,7 @@ export async function register() {
     const { backupDb } = await import("@/jobs/backup-db");
     const { checkKapowarr } = await import("@/jobs/check-kapowarr");
     const { weeklyDigest } = await import("@/jobs/weekly-digest");
+    const { checkUpcomingReleaseDates, refreshUpcomingReleases, tuneUpcomingInterestWeights } = await import("@/jobs/upcoming");
     const { refreshDiscover, initializeDiscover } = await import("@/lib/services/recommendations");
 
     void syncKomga().then(() => initializeDiscover()).catch(() => undefined);
@@ -19,6 +20,9 @@ export async function register() {
     schedule(env.WEEKLY_DIGEST_CRON, () => { void weeklyDigest().catch(() => undefined); }, options);
     schedule("0 10 * * 3", () => { void refreshDiscover().catch(() => undefined); }, options);
     schedule("0 0 * * *", () => { void refreshDiscover("recommended").catch(() => undefined); }, options);
+    schedule("30 5 * * *", () => { void refreshUpcomingReleases().catch(() => undefined); }, options);
+    schedule("0 6 * * *", () => { void checkUpcomingReleaseDates().catch(() => undefined); }, options);
+    schedule("30 6 * * 0", () => { void tuneUpcomingInterestWeights().catch(() => undefined); }, options);
   }
 }
 

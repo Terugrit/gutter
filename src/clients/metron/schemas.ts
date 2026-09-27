@@ -11,12 +11,20 @@ export const metronSeriesSchema = z.object({
   cv_id: z.number().int().nullable().optional(),
   language: z.string().nullable().optional(),
   status: z.string().nullable().optional(),
+  genres: z.array(z.object({ id: z.number().int().optional(), name: z.string() }).passthrough()).optional(),
 }).passthrough();
 export const metronSeriesDetailSchema = metronSeriesSchema.extend({ series: z.string().optional(), name: z.string().optional() })
   .refine((value) => Boolean(value.name || value.series), "Series title is required")
   .transform((value) => ({ ...value, series: value.name ?? value.series! }));
 export const metronIssueSchema = z.object({
   id: z.number().int(),
+  series: z.object({
+    id: z.number().int(),
+    name: z.string(),
+    volume: z.number().int().nullable().optional(),
+    year_began: z.number().int().nullable().optional(),
+    language: z.string().nullable().optional(),
+  }).passthrough().optional(),
   number: z.string(),
   issue: z.string().nullable().optional(),
   store_date: z.string().nullable().optional(),

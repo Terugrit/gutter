@@ -10,15 +10,15 @@ import { localDate, runTrackedJob } from "./status";
 
 type Release = { issueId: number; seriesTitle: string; number: string; issueTitle: string | null; storeDate: string | null; coverUrl: string | null };
 function ntfy() { return env.NTFY_URL && env.NTFY_TOPIC ? new NtfyClient({ baseUrl: env.NTFY_URL, topic: env.NTFY_TOPIC, token: env.NTFY_TOKEN }) : null; }
-async function pendingReleases(): Promise<Release[]> {
-  const rows = await db.select({ skippedAt: issues.skippedAt, issueId: issues.id, seriesTitle: followedSeries.title, number: issues.number, issueTitle: issues.title, storeDate: issues.storeDate, coverUrl: issues.coverUrl, createdAt: followedSeries.createdAt, mode: followedSeries.monitorMode, status: notifications.ntfyStatus, sentAt: notifications.sentAt }).from(issues).innerJoin(followedSeries, eq(issues.followedSeriesId, followedSeries.id)).leftJoin(notifications, and(eq(notifications.issueId, issues.id), eq(notifications.type, "new_release"))).where(and(eq(followedSeries.active, true), eq(issues.active, true), lte(issues.storeDate, localDate()), inArray(followedSeries.matchStatus, ["auto", "confirmed"])));
-  return rows.filter((row) => !row.sentAt && !excludedIssue(row.number, row.issueTitle, row.skippedAt) && (row.mode === "all" || (row.storeDate !== null && row.storeDate >= row.createdAt.slice(0, 10))));
+export async function pendingReleases(): Promise<Release[]> {
+  const rows = await db.select({ skippedAt: issues.skippedAt, issueId: issues.id, seriesTitle: followedSeries.title, number: issues.number, issueTitle: issues.title, storeDate: issues.storeDate, coverUrl: issues.coverUrl, createdAt: followedSeries.createdAt, mode: followedSeries.monitorMode, status: notifications.ntfyStatus, sentAt: notifications.sentAt, deletedAt: notifications.deletedAt }).from(issues).innerJoin(followedSeries, eq(issues.followedSeriesId, followedSeries.id)).leftJoin(notifications, and(eq(notifications.issueId, issues.id), eq(notifications.type, "new_release"))).where(and(eq(followedSeries.active, true), eq(issues.active, true), eq(issues.owned, false), lte(issues.storeDate, localDate()), inArray(followedSeries.matchStatus, ["auto", "confirmed"])));
+  return rows.filter((row) => !row.sentAt && !row.deletedAt && !excludedIssue(row.number, row.issueTitle, row.skippedAt) && (row.mode === "all" || (row.storeDate !== null && row.storeDate >= row.createdAt.slice(0, 10))));
 }
 export async function sendRelease(release: Release) {
   const key = `new-release:${release.issueId}`;
   await db.insert(notifications).values({ issueId: release.issueId, type: "new_release", dedupeKey: key, ntfyStatus: "pending" }).onConflictDoNothing();
   const notification = (await db.select().from(notifications).where(eq(notifications.dedupeKey, key)))[0];
-  if (!notification || notification.sentAt) return false;
+  if (!notification || notification.sentAt || notification.deletedAt) return false;
   const client = ntfy();
   if (!client || !env.APP_BASE_URL) { await db.update(notifications).set({ ntfyStatus: "Configure ntfy and the public app URL in the deployment settings" }).where(eq(notifications.id, notification.id)); return false; }
   try {

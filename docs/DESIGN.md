@@ -50,14 +50,14 @@ Spacing: page gutter 24px (16px mobile). Top bar height 44px.
 ## 3. App shell
 
 **Desktop (>= 1024px)**
-- `TopBar`: left "Comic tracker" (600) then links `Dashboard, Library, Notifications, Discover, Settings` with 20px gaps. Active link: 2px accent underline, offset 6px (`aria-current="page"`). Right: local time with short time zone name (`toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', timeZoneName:'short'})`), updated every 30s, muted. Client component. Give the time element `id="clock"` (the visual tests mask it). On mobile the brand is a separate element in the top bar (see `.mobile-brand` in the preview).
+- `TopBar`: left "Comic tracker" (600) then links `Dashboard, Library, Shelf, Notifications, Discover, Settings` with 20px gaps. Active link: 2px accent underline, offset 6px (`aria-current="page"`). Right: local time with short time zone name (`toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', timeZoneName:'short'})`), updated every 30s, muted. Client component. Give the time element `id="clock"` (the visual tests mask it). On mobile the brand is a separate element in the top bar (see `.mobile-brand` in the preview).
 - When active followed series need a match, Library displays a small numbered `.attention-badge` beside its desktop link and inside its mobile tab. The badge leads to the filtered Library view; it is absent at zero.
 - `main` fills the rest of the height and scrolls (`overflow:auto`). The split layout scrolls its two columns independently.
 - `Dock`: fixed pill at the bottom (24px from the bottom, plus safe area).
 
 **Mobile (< 1024px)**
 - Top bar: "Comic tracker" left, time right. No links.
-- `TabBar`: fixed pill at the bottom, same five labels, active tab has a 2px accent underline; Notifications shows an accent dot when any notification is unread.
+- `TabBar`: fixed pill at the bottom, same six labels, active tab has a 2px accent underline; Notifications shows an accent dot when any notification is unread. At 420px and below it scrolls horizontally in one row, and the active destination scrolls into view.
 - Dock moves up to sit above the tab bar (bottom 80px).
 - Toast sits above the tab bar.
 
@@ -87,20 +87,20 @@ Markup must match the preview's render functions. Key classes:
 ## 5. Pages (exactly as in the preview)
 
 ### 5.1 Notifications (`/notifications`, `/notifications/[id]`)
-- Left `.index` (340px): filter row with an `Unread only` toggle (`aria-pressed`, underline turns accent when on), `.idx-head`, then one `.row` per notification: `01  Night Signal #14 / 16 Sep 2026` with the unread dot on the right. Selected row: 2px accent bottom border, weight 500. Hover: bottom border becomes `--text` and the text shifts 4px right.
+- Left `.index` (340px): filter row with an `Unread only` toggle (`aria-pressed`, underline turns accent when on) and a `Clear all` button, `.idx-head`, then one `.row` per notification: `01  Night Signal #14 / 16 Sep 2026` with the unread dot on the right. Selected row: 2px accent bottom border, weight 500. Hover: bottom border becomes `--text` and the text shifts 4px right. Clear all hides every release notification while preserving its delivery record.
 - Right `.stage`: **no selection** shows `Headline` with `<n> unread`, `<n> notifications`, `Since <oldest date without year>` (preview: "Since 26 Aug"), then the newest cover and the sentence "Select a notification on the left to see the issue, its creators and a shortcut to Kapowarr."
-- **Selected:** `Headline` lines `<Series>`, `Issue <n>`, `Out <date without year>`; below, a grid of cover (220px) and `MetaTable` (Issue title, Writer, Artist, Publisher, Release date, In your library: `● Owned` / `○ Missing`), then the description, then the `Dock` with `Send to Kapowarr` (primary) and `Mark unread`.
+- **Selected:** `Headline` lines `<Series>`, `Issue <n>`, `Out <date without year>`; below, a grid of cover (220px) and `MetaTable` (Issue title, Writer, Artist, Publisher, Release date, In your library: `● Owned` / `○ Missing`), then the description, then the `Dock` with `Send to Kapowarr` (primary), `Mark unread`, and `Delete`. Delete hides that notification and opens an adjacent notification when available.
 - Use a nested layout: `notifications/layout.tsx` renders the list and the `<section class="stage">`; the list stays mounted between routes and keeps its scroll position. Use `useSelectedLayoutSegment()` in a client shell to set the `has-sel` class on `.split`.
 - **Mobile:** `/notifications` shows only the list (rows 56px). `/notifications/[id]` shows only the stage, starting with the `.mbar`: `← Notifications` on the left, `↑` and `↓` links (previous/next notification) on the right. The dock floats above the tab bar.
 
 ### 5.2 Dashboard (`/`)
 - `Headline` (dashboard size): `<n> new issues` (notifications from the latest release date), `<n> missing`, `<n> books read`.
 - Sections, each with a strong top rule, title, and a link on the right:
-  1. **Missing issues** (link: "Manage followed series" to `/library`): rows `01  Night Signal #12 / 22 Jul 2026` with a `Send to Kapowarr` link button trailing.
-  1a. **Coming up**: a cover strip of the next 30 days' eligible issues, grouped under "Week of <date>" labels. A recent date change has a small "moved" tag. When empty, show "No issues due in the next 30 days."
-  2. **Recommended for you** (link "See all" to `/discover`): horizontal strip of 10 items: cover, hairline, title, muted reason, `Follow` link button.
-  3. **Something different**: same, with the random set.
-  4. **Reading**: four `.stat` items: Books read, In progress, Series completed, Read this month.
+  1. **Reading**: four `.stat` items: Books read, In progress, Series completed, Read this month.
+  2. **Missing issues** (link: "Manage followed series" to `/library`): rows `01  Night Signal #12 / 22 Jul 2026` with a `Send to Kapowarr` link button trailing.
+  2a. **Coming up: Followed Series**: one horizontal cover strip of the next 30 days' eligible followed-series issues. A recent date change has a small "moved" tag. When empty, show "No issues due in the next 30 days."
+  3. **Recommended for you** (link "See all" to `/discover`): horizontal strip of 10 items: cover, hairline, title, muted reason, `Follow` link button.
+  4. **Something different**: same, with the random set.
 - Footer line `.foot`: only in the mock/seeded build ("Sample data for the design preview. Covers are generated placeholders."). Remove it when the app runs on real data (show it only if the DB was seeded with mock data).
 
 ### 5.3 Library (`/library`)
@@ -114,6 +114,12 @@ Markup must match the preview's render functions. Key classes:
 - `h1.title` "Discover". Two sections, `Recommended for you` and `Something different`, each with a `Refresh` link button in the header and 10 `.drow` rows: number, (mobile only) 32px cover thumb, `Title / Publisher` with the reason below in muted 13px, and a `Follow` link button.
 - Desktop: hovering a row swaps the sticky right-hand preview cover and shows the title beneath it. Preview hidden on mobile.
 - M06: refreshed entries show a reason beneath the row title and desktop preview. Older cached entries without structured provenance show no new reason line.
+- Recommendations on Discover and the dashboard also show `Save to shelf`, changing to `On shelf` once saved. Saving does not follow or download the series.
+
+### 5.7 Reading shelf (`/shelf`)
+- `h1.title` "Reading shelf", a `.tools` row with All, Saved, and Sent to Kapowarr filters, then a Library-style `.grid` of covers. Each card displays title, `Year began: <year>` or `Year unknown`, publisher, `Send to Kapowarr`, and `Remove from shelf`.
+- A brief sentence explains that sending also follows the series. Sending uses the existing Kapowarr action and shows busy, sent, or retry states. Removal affects only the shelf.
+- No saved cards: one large Playfair sentence and a Discover link. A filter with no matches shows a plain sentence and Show all. Loading uses hairline rows.
 
 ### 5.6 Reading recap (`/recap`, `/recap/[year]`)
 - The dashboard Reading header links here, not the nav. Existing `.page`, `.tools`, `.sec`, `.stats`, and `.row` markup frames year links, totals and top series. Twelve CSS `.recap-month` blocks show dated completed reads by month; the same markup works on mobile. Before sync or with no dated reads in the year, show one sentence and one link.
@@ -121,6 +127,12 @@ Markup must match the preview's render functions. Key classes:
 ### 5.5 Settings (`/settings`)
 - `h1.title` "Settings"; section "Connections"; one `.srow` per service: name, URL (muted), `● Connected`, `Test` link button. Test shows `Testing…` then the result. The live version also shows `○ Not reachable` with the error on failure.
 - The Komga library section uses the existing `.tools` button style for **Scan library files**, separate from **Library sync** in Data and jobs. The scan button appears only after selecting a library; it reports Komga's acceptance, not completion. See the same section in `docs/design/preview.html`.
+
+### 5.8 Coming Soon and released issues
+- Dashboard adds a `Coming Soon` `.sec` after `Coming up`. It is a `.strip` of five to eight solicited issues from 30–45 days out. Each figure shows cover, series and issue, date, publisher, confidence, and optional genre. The one out-of-interest result says `wildcard pick` in words.
+- Each Coming Soon figure uses only existing underline controls: a `This issue / This series` select, `Follow`, and `Not interested`. A collapsed tool area reuses `.tools` and `.row` for manual Metron lookup and publisher/genre exclusions.
+- `/shelf` begins with a `Released for you` section above M07's `Saved series` grid. Released issues use `.row.drow` with a small cover, added date, pending/downloading status, a textual `stale` marker after seven days, Kapowarr link when available, and `Clear` fallback. Rows are grouped under `This week` or `Week of <date>` labels.
+- The additions use the existing token colours, rules, square controls, Playfair type, and generated cover fallback. `.coming-actions`, `.coming-tools`, `.release-row`, `.release-actions`, and `.shelf-week` only arrange these existing elements; they introduce no new visual tokens.
 
 ## 6. Responsive rules
 - Breakpoint 1024px: below it the split becomes one screen at a time, top links move to the tab bar, headlines switch to `clamp(2.4rem, 12.5cqw, 5rem)` with odd lines right-aligned and even lines left-aligned and no indents.
@@ -148,6 +160,7 @@ src/app/notifications/layout.tsx   .split with index (left) and .stage (right)
 src/app/notifications/page.tsx     stage summary
 src/app/notifications/[id]/page.tsx stage detail
 src/app/discover/page.tsx          Discover (client part: hover preview)
+src/app/shelf/page.tsx             Reading shelf (client part: filters and actions)
 src/app/settings/page.tsx          Settings
 src/app/series/[id]/page.tsx       see section 9
 src/app/api/health/route.ts
@@ -157,7 +170,7 @@ src/lib/services/                  getNotifications, getNotification, getMissing
                                    getReadingStats, getLibrary, getServices (pages use only these)
 ```
 
-Nav hrefs: `/`, `/library`, `/notifications`, `/discover`, `/settings`. `TopBar` and `TabBar` set `aria-current="page"` from the pathname (`/notifications/3` counts as Notifications).
+Nav hrefs: `/`, `/library`, `/shelf`, `/notifications`, `/discover`, `/settings`. `TopBar` and `TabBar` set `aria-current="page"` from the pathname (`/notifications/3` counts as Notifications).
 
 ## 9. Not in the preview (build from the same parts; keep it minimal)
 
@@ -186,12 +199,14 @@ Seed with `pnpm db:seed-mock`. Mask the clock element (`#clock`) in every shot. 
 | mobile-notifications-detail | `/notifications/3` | 390x844, scale 2 |
 | mobile-dashboard | `/` | 390x844, scale 2 |
 | mobile-discover | `/discover` | 390x844, scale 2 |
+| desktop-shelf / desktop-shelf-empty | `/shelf` | 1440x900, saved and empty |
+| mobile-shelf / mobile-shelf-empty | `/shelf` | 390x844, saved and empty |
 
 Since opening a notification marks it read, reseed (or reset `read_at`) before each shot.
 
 ## 11. Copy (use exactly)
 
-Brand: `Comic tracker`. Nav: `Dashboard`, `Library`, `Notifications`, `Discover`, `Settings`. Buttons and links: `Send to Kapowarr`, `Sending…`, `Sent to Kapowarr`, `Mark unread`, `Marked unread`, `Follow`, `Following`, `Follow <n> series`, `Clear`, `Refresh`, `Test`, `Testing…`, `Manage followed series`, `See all`, `Unread only`, `Followed only`. Table labels: `Issue title`, `Writer`, `Artist`, `Publisher`, `Release date`, `In your library`. Section titles: `Missing issues`, `Recommended for you`, `Something different`, `Reading`, `Connections`. Stats: `Books read`, `In progress`, `Series completed`, `Read this month`. Toasts: `Sent to Kapowarr`, `Marked unread`, `Following <title>`, `Unfollowed <title>`, `Following <n> series`, `Recommendations refreshed`.
+Brand: `Comic tracker`. Nav: `Dashboard`, `Library`, `Shelf`, `Notifications`, `Discover`, `Settings`. Buttons and links: `Send to Kapowarr`, `Sending…`, `Sent to Kapowarr`, `Save to shelf`, `On shelf`, `Remove from shelf`, `Mark unread`, `Marked unread`, `Delete`, `Clear all`, `Follow`, `Following`, `Follow <n> series`, `Clear`, `Refresh`, `Test`, `Testing…`, `Manage followed series`, `See all`, `Unread only`, `Followed only`. Table labels: `Issue title`, `Writer`, `Artist`, `Publisher`, `Release date`, `In your library`. Section titles: `Missing issues`, `Recommended for you`, `Something different`, `Reading`, `Connections`. Stats: `Books read`, `In progress`, `Series completed`, `Read this month`. Toasts: `Sent to Kapowarr`, `Saved to shelf`, `Marked unread`, `Notification deleted`, `All notifications cleared`, `Following <title>`, `Unfollowed <title>`, `Following <n> series`, `Recommendations refreshed`.
 
 The same action keeps the same name everywhere (the button says "Send to Kapowarr", so the toast says "Sent to Kapowarr").
 

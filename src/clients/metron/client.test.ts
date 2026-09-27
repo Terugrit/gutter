@@ -24,6 +24,17 @@ describe("MetronClient", () => {
     await expect(new MetronClient({ username: "u", password: "p" }).listIssues(10)).resolves.toMatchObject([{ id: 22, number: "1" }]);
     server.close();
   });
+  it("lists upcoming issues with the documented date-range filters", async () => {
+    server.use(http.get("https://metron.cloud/api/issue/", ({ request }) => {
+      const url = new URL(request.url);
+      expect(url.searchParams.get("store_date_range_after")).toBe("2026-10-27");
+      expect(url.searchParams.get("store_date_range_before")).toBe("2026-11-11");
+      return HttpResponse.json({ count: 1, next: null, previous: null, results: [{ id: 23, series: { id: 10, name: "Night Signal", language: "en" }, number: "15", store_date: "2026-11-04", image: null }] });
+    }));
+    server.listen();
+    await expect(new MetronClient({ username: "u", password: "p" }).searchIssues({ storeDateAfter: "2026-10-27", storeDateBefore: "2026-11-11" })).resolves.toMatchObject([{ id: 23, series: { id: 10 }, number: "15" }]);
+    server.close();
+  });
   it("searches creators and filters series by creator", async () => {
     server.use(
       http.get("https://metron.cloud/api/creator/", ({ request }) => { expect(new URL(request.url).searchParams.get("name")).toBe("Mara Okonkwo"); return HttpResponse.json({ count: 1, next: null, previous: null, results: [{ id: 7, name: "Mara Okonkwo" }] }); }),

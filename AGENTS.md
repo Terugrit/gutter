@@ -142,3 +142,20 @@ scripts/start.mjs              shared container entrypoint; maps HA options to t
 - `repository.yaml` and `gutter/config.yaml` make this GitHub repository installable as a Home Assistant app repository. The app uses an exposed configurable port, not Ingress, because the Next.js build assumes root-relative asset paths.
 - `scripts/start.mjs` reads `/data/options.json` when Supervisor provides it, maps app options to the validated environment variables, fixes the database at `/data/app.db`, runs migrations, and starts the standalone server. Without that file, the same image continues to use Docker Compose environment variables.
 - `gutter/config.yaml` and `gutter/CHANGELOG.md` versions must be bumped together before publishing an app update. `.github/workflows/home-assistant-app.yaml` publishes `amd64` and `aarch64` images to `ghcr.io/terugrit/gutter`.
+
+## M07 reading shelf
+- `/shelf` is a persistent Metron-series bookmark grid. `reading_shelf` snapshots title, publisher, start year, cover, and save time; it is separate from `followed_series`. The idempotent runtime migration and `drizzle/0002_perpetual_boomer.sql` add the table.
+- Dashboard and Discover use the shared recommendation actions to save. A save reads cached metadata, performs no external call, and does not follow or download. Old recommendation caches without `yearBegan` remain valid; unknown years remain unknown.
+- The six-link desktop and mobile navigation includes Shelf between Library and Notifications. At 420px and below, the mobile tab bar scrolls horizontally in one row and brings the active link into view.
+- Shelf send reuses the Metron-backed follow and Kapowarr add-and-search service, and leaves the card saved. Removal affects only the shelf. Pages read shelf data through `src/lib/services/reading-shelf.ts`.
+
+## Notification removal
+- `notifications.deleted_at` is a soft-delete timestamp. Notification pages, unread counts, and oldest-date summaries exclude hidden rows, while release delivery deduplication continues to use the retained record.
+- The notification index exposes Clear all; a selected notification exposes Delete and then moves to an adjacent visible notification when available.
+
+## M08 Coming Soon and release shelf
+- `upcoming_releases` is the local 30–45 day Metron solicitation pool. `watches`, `dismissed_series`, `interest_filters`, and `interest_weights` hold user intent and feedback; page renders never query Metron.
+- The existing M07 `reading_shelf` remains the saved-series bookmark table. M08's issue staging queue is `release_shelf`; `/shelf` shows released watched issues first and saved series second so both established workflows remain available.
+- `refresh-upcoming-releases` runs daily at 05:30, `check-release-dates` daily at 06:00, and `tune-interest-weights` weekly Sunday at 06:30 in `TZ`. Kapowarr's existing poll advances and soft-removes release-shelf rows.
+- Metron does not expose a documented solicitation-confidence flag. Date-range candidates therefore default to `solicited`; do not infer `confirmed` from proximity to release.
+- A watch follows the Metron series but never sends it to Kapowarr. Automatic release detection sends a notification and stages the issue; starting a Kapowarr search remains an explicit user action elsewhere in the app.

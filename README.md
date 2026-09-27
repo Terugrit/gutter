@@ -13,6 +13,7 @@
 - Receive new-release, weekly-digest, job-failure, and recovery notifications through ntfy.
 - Find missing issues and send a volume to Kapowarr only when you choose to download it.
 - Track upcoming releases, changed release dates, collection progress, reading activity, and yearly recaps.
+- Browse a weighted Coming Soon rotation, follow one issue or a whole series, and let released watches leave the shelf after Kapowarr finishes.
 - Discover recommendations based on your library without calling metadata services on every page load.
 - Run as a Home Assistant OS app or as a standalone Docker Compose service.
 - Keep application data in a persistent SQLite database with scheduled backups and portable follow exports.
@@ -46,6 +47,10 @@ After starting Gutter:
 3. Open **Library** and follow the series you want Gutter to monitor.
 4. Review releases and collection status from the dashboard and individual series pages.
 5. Use **Download volume** when you want Kapowarr to add and search for a volume.
+
+Save a Dashboard or Discover recommendation to **Shelf** to decide later. The Shelf link is in both desktop and phone navigation. Saving does not follow or download the series; **Send to Kapowarr** on the shelf also follows that series. Removing it from the shelf leaves follows and downloads alone.
+
+The dashboard's **Coming Soon** section is separate: following a solicited issue or series creates a release watch. When its date arrives, the issue appears in **Released for you** at the top of Shelf and uses the normal release notification pipeline. Kapowarr completion clears that queue item automatically.
 
 Gutter never starts a Kapowarr search merely because it detects a release. Downloads require an explicit action.
 

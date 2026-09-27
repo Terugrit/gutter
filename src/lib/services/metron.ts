@@ -1,5 +1,5 @@
 import { and, eq, inArray, or } from "drizzle-orm";
-import { MetronClient, type SeriesSearch } from "@/clients/metron/client";
+import { MetronClient, type IssueSearch, type SeriesSearch } from "@/clients/metron/client";
 import type { MetronCreator, MetronIssue, MetronSeries } from "@/clients/metron/schemas";
 import { ComicVineClient } from "@/clients/comicvine/client";
 import { db } from "@/db";
@@ -123,7 +123,7 @@ export async function getMetronIssue(id: number): Promise<MetronIssue | null> {
   await saveCache(key, result, ISSUE_TTL_SECONDS);
   return result;
 }
-async function getMetronSeries(id: number, force = false): Promise<MetronSeries | null> {
+export async function getMetronSeries(id: number, force = false): Promise<MetronSeries | null> {
   const key = `metron:series:${id}`;
   const hit = await cached<MetronSeries>(key);
   if (hit && !force) return hit;
@@ -132,6 +132,11 @@ async function getMetronSeries(id: number, force = false): Promise<MetronSeries 
   const result = await metron.getSeries(id);
   await saveCache(key, result, SEARCH_TTL_SECONDS);
   return result;
+}
+export async function searchUpcomingMetronIssues(search: IssueSearch): Promise<MetronIssue[]> {
+  const metron = client();
+  if (!metron) return [];
+  return metron.searchIssues(search);
 }
 function numericMetadata(metadata: Record<string, unknown> | undefined, keys: string[]): number | null {
   if (!metadata) return null;

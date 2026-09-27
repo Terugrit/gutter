@@ -7,7 +7,7 @@ import { localDate, runTrackedJob } from "@/jobs/status";
 import { normalizedTitle, rankRecommendations, yearInTitle, type RecommendationSeed } from "@/lib/recommendation-ranking";
 import { z } from "zod";
 
-export const recommendationSchema = z.object({ id: z.number(), title: z.string(), publisher: z.string(), coverUrl: z.string(), reason: z.string(), why: z.object({ kind: z.enum(["writer", "publisher", "random"]), name: z.string(), sourceSeries: z.string().optional() }).optional(), seedId: z.string().optional(), overlaps: z.array(z.string()).optional(), score: z.number().optional() });
+export const recommendationSchema = z.object({ id: z.number(), title: z.string(), publisher: z.string(), coverUrl: z.string(), yearBegan: z.number().int().nullable().optional(), reason: z.string(), why: z.object({ kind: z.enum(["writer", "publisher", "random"]), name: z.string(), sourceSeries: z.string().optional() }).optional(), seedId: z.string().optional(), overlaps: z.array(z.string()).optional(), score: z.number().optional() });
 export const recommendationSetsSchema = z.object({ recommended: z.array(recommendationSchema), different: z.array(recommendationSchema) });
 export type Recommendation = z.infer<typeof recommendationSchema>;
 export type RecommendationSets = { recommended: Recommendation[]; different: Recommendation[] };
@@ -107,7 +107,7 @@ async function updateRecommended(sets: RecommendationSets): Promise<Recommendati
   let recommended: Recommendation[] = [];
   for (let attempt = 0; attempt < 24; attempt += 1) {
     const picks = rankRecommendations({ ...rankingInput, sequence: sequence * 24 + attempt });
-    if (picks.length > recommended.length) recommended = picks;
+    if (picks.length > recommended.length) recommended = picks.map((item) => ({ ...item, yearBegan: pool.entries.find((entry) => entry.id === item.id)?.yearBegan ?? null }));
     if (recommended.length === 10) break;
   }
   {
@@ -184,7 +184,7 @@ async function buildDiscover(scope: DiscoverScope): Promise<RecommendationSets> 
         entry.checked = true;
       }
       if (!entry.coverUrl) continue;
-       different.push({ id: entry.id, title: entry.title, publisher: entry.publisher, reason: "Picked at random", why: { kind: "random", name: entry.publisher }, coverUrl: entry.coverUrl });
+       different.push({ id: entry.id, title: entry.title, publisher: entry.publisher, yearBegan: entry.yearBegan ?? null, reason: "Picked at random", why: { kind: "random", name: entry.publisher }, coverUrl: entry.coverUrl });
       publisherCounts.set(entry.publisher, (publisherCounts.get(entry.publisher) ?? 0) + 1);
       usedTitles.add(normalizedTitle(entry.title));
       shown.add(entry.id);

@@ -109,7 +109,7 @@ The design is built first, against sample data, so everything after it only swap
 **Accept:** matcher tests on fixtures (same title different years, reboots); unmatched series clearly flagged and never notified; no Metron calls on page load.
 
 ### M4: Real notifications, ntfy, weekly digest
-**Tasks:** ntfy client + real test button. `refresh-releases` and `weekly-digest` jobs. Notifications pages now read real data; opening a notification sets `read_at`.
+**Tasks:** ntfy client + real test button. `refresh-releases` and `weekly-digest` jobs. Notifications pages now read real data; opening a notification sets `read_at`. Individual Delete and Clear all controls hide notification entries without removing their delivery deduplication records.
 **Accept:** simulated new issue produces exactly one ntfy request even when the job runs three times; digest sends once per week; empty weeks send nothing; pages handle missing cover/description; ntfy click URL opens the right page.
 
 Notification format: title `New: <Series> #<n>`, body with issue title + date, cover attached, click URL = `APP_BASE_URL/notifications/<id>`.
@@ -121,6 +121,14 @@ Notification format: title `New: <Series> #<n>`, body with issue title + date, c
 ### M6: Reading stats and Discover
 **Tasks:** Verify in `docs/api-notes/komga.md` what Komga exposes (read progress, read status filters). Stats cards on the dashboard. Discover: library-based (10) from top publishers and writers of followed/owned series with a short reason ("Same writer as X"); random (10) English Metron series not in the library, max 2 per publisher, must have cover and issues. Cache results; Refresh; Follow and Dismiss.
 **Accept:** stats only use real Komga endpoints (gaps documented, not faked); no followed or owned series in Discover; the two sets never overlap; every library-based row has a reason.
+
+### M7: Reading shelf
+**Tasks:** Implement `docs/READING_SHELF_PLAN.md` as one follow-up milestone. Add a persistent series shelf, Save to shelf on Dashboard and Discover, a cover-grid `/shelf` page, and Shelf in desktop and mobile navigation. Sending a saved series to Kapowarr is explicit and reuses the existing follow-and-send service.
+**Accept:** saves survive recommendation rotation and restart; saving causes no follow or download; the shelf shows cover, series start year, and publisher; send and remove are independent and idempotent; revised preview and visual tests cover six-link navigation and shelf states.
+
+### M8: Coming Soon and release shelf
+**Tasks:** Implement `docs/COMING_SOON_PLAN.md`. Add a local Metron solicitation pool for the 30–45 day window, weighted dashboard rotation with one wildcard, issue/series watches, persistent dismissals and negative filters, manual search/add, release-date promotion into an issue queue on `/shelf`, Kapowarr-driven automatic removal, and weekly feedback tuning. Keep M7's saved-series shelf as the second section on the same route.
+**Accept:** refresh and release jobs are idempotent; page reads use SQLite only; candidates honor dismissals and filters; one wildcard is labeled; a due watch lands on the release shelf and sends through the existing notification pipeline; a Kapowarr completion soft-removes it and records a downloaded outcome; the M7 saved-series workflow is unchanged.
 
 ## 7. Known risks
 

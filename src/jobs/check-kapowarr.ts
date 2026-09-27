@@ -6,6 +6,7 @@ import { env } from "@/env";
 import { getMissingIssues } from "@/lib/services/missing";
 import { refreshKapowarrStatus } from "@/lib/services/kapowarr-status";
 import { getSelectedKomgaLibraryId } from "@/lib/services/settings";
+import { updateReleaseShelfForKapowarr } from "@/lib/services/coming-soon";
 import { runTrackedJob } from "./status";
 
 const SCAN_DEBOUNCE_MS = 30 * 60 * 1000;
@@ -47,6 +48,7 @@ export async function checkKapowarr() {
     for (const follow of follows) {
       if (!follow.kapowarrVolumeId || !missingIds.has(follow.komgaSeriesId)) continue;
       const { previous, current } = await refreshKapowarrStatus(follow.id);
+      await updateReleaseShelfForKapowarr(follow.id, previous, current);
       checked += 1;
       if (libraryId && current.state === "files-ready" && (previous?.state !== "files-ready" || current.filesHave > previous.filesHave)) {
         const fetchedAt = new Date().toISOString();

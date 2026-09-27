@@ -4,7 +4,7 @@ import { kvCache } from "@/db/schema";
 import { env } from "@/env";
 import { NtfyClient } from "@/clients/ntfy/client";
 
-export type JobName = "backup-db" | "sync-komga" | "scan-komga" | "refresh-releases" | "weekly-digest" | "refresh-discover" | "check-kapowarr";
+export type JobName = "backup-db" | "sync-komga" | "scan-komga" | "refresh-releases" | "weekly-digest" | "refresh-discover" | "check-kapowarr" | "refresh-upcoming-releases" | "check-release-dates" | "tune-interest-weights";
 export type JobStatus = { state: "running" | "success" | "failed"; startedAt: string; finishedAt?: string; lastSuccessAt?: string; error?: string; consecutiveFailures?: number; failureAlertedAt?: string };
 export const JOB_FAILURE_ALERT_AFTER = 2;
 const pending = new Set<JobName>();

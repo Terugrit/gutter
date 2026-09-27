@@ -10,7 +10,7 @@ function toNotification({ notification, issue, series }: { notification: typeof 
   return { id: notification.id, seriesId: series.komgaSeriesId, comicVineVolumeId: series.comicvineVolumeId, s: series.title, i: issue.number, d: displayDate(issue.storeDate), pub: series.publisher ?? "Not listed", t: issue.title ?? `${series.title} #${issue.number}`, w: c.writer, a: c.artist, u: notification.readAt ? 0 : 1, own: issue.owned, desc: issue.description ?? "No description is available for this issue.", seed: series.id, coverUrl: issue.coverUrl };
 }
 
-function notificationRows(where = eq(notifications.type, "new_release")) {
+function notificationRows(where = and(eq(notifications.type, "new_release"), isNull(notifications.deletedAt))) {
   return db.select({ notification: notifications, issue: issues, series: followedSeries }).from(notifications).innerJoin(issues, eq(notifications.issueId, issues.id)).innerJoin(followedSeries, eq(issues.followedSeriesId, followedSeries.id)).where(where);
 }
 
@@ -19,15 +19,26 @@ export async function getNotifications(): Promise<Notification[]> {
   return rows.map(toNotification);
 }
 export async function getNotification(id: number) {
-  const row = (await notificationRows(and(eq(notifications.type, "new_release"), eq(notifications.id, id))))[0];
+  const row = (await notificationRows(and(eq(notifications.type, "new_release"), eq(notifications.id, id), isNull(notifications.deletedAt))))[0];
   return row ? toNotification(row) : null;
 }
-export async function markNotificationRead(id: number, unread = false) { await db.update(notifications).set({ readAt: unread ? null : new Date().toISOString() }).where(eq(notifications.id, id)); }
+export async function markNotificationRead(id: number, unread = false) {
+  const rows = await db.update(notifications).set({ readAt: unread ? null : new Date().toISOString() }).where(and(eq(notifications.id, id), eq(notifications.type, "new_release"), isNull(notifications.deletedAt))).returning({ id: notifications.id });
+  return rows.length > 0;
+}
+export async function deleteNotification(id: number) {
+  const rows = await db.update(notifications).set({ deletedAt: new Date().toISOString() }).where(and(eq(notifications.id, id), eq(notifications.type, "new_release"), isNull(notifications.deletedAt))).returning({ id: notifications.id });
+  return rows.length > 0;
+}
+export async function clearNotifications() {
+  const rows = await db.update(notifications).set({ deletedAt: new Date().toISOString() }).where(and(eq(notifications.type, "new_release"), isNull(notifications.deletedAt))).returning({ id: notifications.id });
+  return rows.length;
+}
 export async function getUnreadNotificationCount() {
-  const result = await db.select({ value: count(notifications.id) }).from(notifications).innerJoin(issues, eq(notifications.issueId, issues.id)).innerJoin(followedSeries, eq(issues.followedSeriesId, followedSeries.id)).where(and(eq(notifications.type, "new_release"), isNull(notifications.readAt)));
+  const result = await db.select({ value: count(notifications.id) }).from(notifications).innerJoin(issues, eq(notifications.issueId, issues.id)).innerJoin(followedSeries, eq(issues.followedSeriesId, followedSeries.id)).where(and(eq(notifications.type, "new_release"), isNull(notifications.readAt), isNull(notifications.deletedAt)));
   return result[0]?.value ?? 0;
 }
 export async function oldestNotificationDate() {
-  const result = await db.select({ value: min(issues.storeDate) }).from(notifications).innerJoin(issues, eq(notifications.issueId, issues.id)).where(eq(notifications.type, "new_release"));
+  const result = await db.select({ value: min(issues.storeDate) }).from(notifications).innerJoin(issues, eq(notifications.issueId, issues.id)).where(and(eq(notifications.type, "new_release"), isNull(notifications.deletedAt)));
   return result[0]?.value ? displayDate(result[0].value).replace(/ \d{4}$/, "") : "";
 }
